@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <!-- Cyan → blue → magenta gradient (premium audio brand palette) -->
+    <!-- Amber → orange → red-orange → crimson gradient (warm "hot signal" mixer palette,
+         deliberately distinct from the old cyan/blue/violet/magenta identity) -->
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%"   stop-color="#1FE0FF"/>
-      <stop offset="35%"  stop-color="#1A4DFF"/>
-      <stop offset="75%"  stop-color="#7A1FFF"/>
-      <stop offset="100%" stop-color="#C211FF"/>
+      <stop offset="0%"   stop-color="#FFD60A"/>
+      <stop offset="35%"  stop-color="#FF8A00"/>
+      <stop offset="75%"  stop-color="#FF3B30"/>
+      <stop offset="100%" stop-color="#D0021B"/>
     </linearGradient>
 
     <!-- Top sheen -->
@@ -21,10 +22,10 @@
       <stop offset="100%" stop-color="#000000" stop-opacity="0.22"/>
     </linearGradient>
 
-    <!-- Soft white-edge gradient on the wave for liquid look -->
-    <linearGradient id="wave" x1="50%" y1="0%" x2="50%" y2="100%">
+    <!-- Soft white-edge gradient on the fader caps for a liquid/glassy look -->
+    <linearGradient id="cap" x1="50%" y1="0%" x2="50%" y2="100%">
       <stop offset="0%"   stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#E1F2FF"/>
+      <stop offset="100%" stop-color="#FFEFE1"/>
     </linearGradient>
 
     <!-- Glow filter -->
@@ -43,41 +44,31 @@
 
   <g clip-path="url(#squircle)">
     <rect width="1024" height="1024" fill="url(#bg)"/>
-
-    <!-- Soft sonar pulse rings — keep the "Flow" mood -->
-    <g opacity="0.18" stroke="white" stroke-width="3" fill="none">
-      <circle cx="512" cy="512" r="280"/>
-      <circle cx="512" cy="512" r="370"/>
-    </g>
-
     <rect width="1024" height="1024" fill="url(#bottomShade)"/>
 
-    <!-- Central waveform — three stacked sound-wave forms.
-         Built as smooth Bezier curves to read at 16x16 down to 1024.
-         Same DNA as SF Symbol "waveform" but re-drawn for maximum legibility.
+    <!-- Three mixing-board faders at different levels — the literal "Fader"
+         glyph: a track per app/channel, a cap showing its current level.
+         Built as chunky rounded shapes so it reads clearly at 16px. -->
 
-         Layout: a tall central waveform with two side flanks of decreasing
-         amplitude, mirroring how audio waveforms look in DAWs.
-         Heights: 240 (left), 380 (center), 240 (right).
-         Stroke width: 64 for chunky, friendly silhouette.
+    <!-- Tracks (fader slots) -->
+    <g opacity="0.32" fill="#FFFFFF">
+      <rect x="306" y="260" width="28" height="504" rx="14" ry="14"/>
+      <rect x="498" y="260" width="28" height="504" rx="14" ry="14"/>
+      <rect x="690" y="260" width="28" height="504" rx="14" ry="14"/>
+    </g>
 
-         Each "bar" is actually a vertical lozenge centered at y=512. -->
+    <!-- Filled portion below each cap, like an LED level strip -->
+    <g opacity="0.55" fill="#FFFFFF">
+      <rect x="306" y="380" width="28" height="384" rx="14" ry="14"/>
+      <rect x="498" y="620" width="28" height="144" rx="14" ry="14"/>
+      <rect x="690" y="480" width="28" height="284" rx="14" ry="14"/>
+    </g>
 
-    <!-- Six rounded vertical capsules at varying heights — reads as a sound
-         waveform / EQ peak silhouette. Heights peak in the middle (=loudest). -->
-    <g filter="url(#glow)" fill="url(#wave)">
-      <!-- Far-left -->
-      <rect x="246" y="442" width="64" height="140" rx="32" ry="32"/>
-      <!-- Inner-left -->
-      <rect x="346" y="384" width="64" height="256" rx="32" ry="32"/>
-      <!-- Center (tallest) -->
-      <rect x="446" y="304" width="64" height="416" rx="32" ry="32"/>
-      <!-- Inner-right -->
-      <rect x="546" y="336" width="64" height="352" rx="32" ry="32"/>
-      <!-- Outer-right -->
-      <rect x="646" y="408" width="64" height="208" rx="32" ry="32"/>
-      <!-- Far-right -->
-      <rect x="746" y="460" width="64" height="104" rx="32" ry="32"/>
+    <!-- Caps (fader thumbs) -->
+    <g filter="url(#glow)" fill="url(#cap)">
+      <rect x="240" y="348" width="160" height="64" rx="22" ry="22"/>
+      <rect x="432" y="588" width="160" height="64" rx="22" ry="22"/>
+      <rect x="624" y="448" width="160" height="64" rx="22" ry="22"/>
     </g>
 
     <!-- Top glossy highlight -->
