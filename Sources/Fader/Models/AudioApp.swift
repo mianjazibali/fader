@@ -33,6 +33,14 @@ struct AudioApp: Identifiable, Equatable {
     /// about which apps we can drive).
     var supportsVolumeControl: Bool
 
+    /// True if the user has muted this app or turned its volume down from
+    /// the default — worth keeping visible even while it's gone quiet, so
+    /// muting an app can't make it (and the ability to undo the mute)
+    /// disappear the next time it stops playing.
+    var hasCustomSettings: Bool {
+        isMuted || volume < 0.995
+    }
+
     static func == (lhs: AudioApp, rhs: AudioApp) -> Bool {
         lhs.id == rhs.id &&
         lhs.volume == rhs.volume &&

@@ -66,11 +66,14 @@ private struct MainPanel: View {
     @Bindable var state: AudioState
 
     var body: some View {
-        // Only display apps that are actually producing audio right now —
-        // matches user expectation ("apps playing"), removes the awkward
-        // "No audio playing" + stale-rows mismatch, and avoids showing
-        // washed-out dim rows. State still remembers paused apps' volumes.
-        let visibleApps = state.apps.filter { $0.isActive }
+        // Show apps that are actively playing, PLUS anything the user has
+        // muted or turned down — otherwise muting an app, then having it go
+        // quiet (track ends, app is paused), hides the row and its mute
+        // state with it. Next time that app plays again it's silently
+        // muted with no visible way to notice or undo it. Apps the user has
+        // never touched still only show up while actually playing, so this
+        // doesn't reintroduce clutter/stale rows for untouched apps.
+        let visibleApps = state.apps.filter { $0.isActive || $0.hasCustomSettings }
 
         VStack(spacing: 0) {
             if state.duckingEnabled && state.isAnyCommunicationActive {
