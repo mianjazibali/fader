@@ -147,8 +147,7 @@
     width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
   }
   .demo-frame {
-    border: 1.5px solid var(--line);
-    padding: 22px;
+    padding: 22px 0;
     display: flex; justify-content: center;
   }
 
@@ -172,14 +171,17 @@
   }
   .panel-topbar .spacer { flex: 1; }
   .icon-btn {
-    width: 22px; height: 22px; border-radius: 6px;
+    width: 26px; height: 26px; border-radius: 7px;
     display: grid; place-items: center;
-    background: transparent; border: none; cursor: pointer;
-    color: var(--panel-muted); transition: background .12s, color .12s;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    cursor: pointer;
+    color: #fff; transition: background .12s, border-color .12s, transform .1s;
   }
-  .icon-btn:hover { background: rgba(255,255,255,0.09); color: #fff; }
+  .icon-btn:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.28); }
+  .icon-btn:active { transform: scale(0.94); }
   .icon-btn svg { width: 13px; height: 13px; }
-  .icon-btn.on { color: var(--accent); background: rgba(255,90,31,0.16); }
+  .icon-btn.on { color: var(--accent); background: rgba(255,90,31,0.20); border-color: rgba(255,90,31,0.45); }
   .panel-divider { height: 1px; background: var(--panel-line); }
 
   .panel-body { padding: 6px 14px 10px; }
@@ -214,11 +216,17 @@
 
   .demo-slider-row { display: flex; align-items: center; gap: 8px; }
   .demo-slider-row .mute-btn {
-    background: none; border: none; cursor: pointer;
-    color: var(--panel-muted); width: 16px; display: grid; place-items: center;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 999px; cursor: pointer;
+    color: #fff; width: 22px; height: 22px; display: grid; place-items: center;
     flex-shrink: 0;
+    transition: background .12s, border-color .12s, transform .1s;
   }
-  .demo-slider-row .mute-btn svg { width: 14px; height: 14px; }
+  .demo-slider-row .mute-btn:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.28); }
+  .demo-slider-row .mute-btn:active { transform: scale(0.92); }
+  .demo-slider-row .mute-btn svg { width: 13px; height: 13px; }
+  .demo-row.muted .mute-btn { background: rgba(255,90,31,0.20); border-color: rgba(255,90,31,0.45); color: var(--accent); }
   .demo-slider-row .loud { color: var(--panel-muted); flex-shrink: 0; display: grid; place-items: center; }
   .demo-slider-row .loud svg { width: 14px; height: 14px; }
 
@@ -281,13 +289,6 @@
     transition: border-color .15s, color .15s;
   }
   .demo-call-toggle:hover { border-color: var(--accent); color: #fff; }
-
-  .demo-legend { list-style: none; margin-top: 20px; }
-  .demo-legend li {
-    font-size: 13px; color: var(--muted); line-height: 1.55;
-    padding: 8px 0; border-top: 1px solid var(--line);
-  }
-  .demo-legend strong { color: var(--ink); font-weight: 700; }
 
   /* Sections */
   section.container { padding-top: 4px; padding-bottom: 90px; }
@@ -412,7 +413,6 @@
     nav .nav-right { gap: 14px; }
     nav a.nav-link { display: none; }
     .oss-tag { display: none; }
-    .demo-frame { padding: 20px 14px; }
     .panel-mock { width: 100%; max-width: 380px; }
     .spec-row { grid-template-columns: 40px 1fr; }
     .spec-row .spec-desc { grid-column: 2; }
@@ -493,12 +493,6 @@
           </div>
         </div>
       </div>
-      <ul class="demo-legend">
-        <li><strong>Speaker icon, top right</strong> — turns this demo's sound on or off</li>
-        <li><strong>Speaker icon, next to each slider</strong> — mutes just that one app</li>
-        <li><strong>Slider</strong> — drag to change that app's volume</li>
-        <li><strong>"Simulate joining a call"</strong> — watch the other apps automatically quiet down</li>
-      </ul>
     </div>
   </div>
 </header>
