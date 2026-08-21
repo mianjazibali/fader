@@ -93,12 +93,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let host = NSHostingController(
             rootView: ControlCenterView(engine: engine)
                 .padding(16)
-                .frame(width: 380)
         )
-        host.sizingOptions = [.preferredContentSize]
-
+        // Deliberately no `sizingOptions`. `[.preferredContentSize]`
+        // continuously re-tracks the window to the SwiftUI content's ideal
+        // size on every content change — when that content's height
+        // genuinely changes (Main <-> Settings), the resize and AppKit's
+        // own constraint pass can fail to converge, and AppKit crashes
+        // rather than loop forever ("Update Constraints In Window" — this
+        // reproduced identically whether or not the window was
+        // `.resizable`, so the auto-tracking itself is the trigger, not
+        // interactive resizing). Instead we size the window ONCE below,
+        // to whatever the content's fitting size is at that moment — fine
+        // for a QA preview tool that doesn't need to live-resize.
         let window = NSWindow(contentViewController: host)
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        window.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         // Movable by background bubbles drag events past SwiftUI gestures —
@@ -106,6 +114,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // the visible title-bar traffic-light area instead.
         window.isMovableByWindowBackground = false
         window.title = "Fader"
+        window.setContentSize(host.view.fittingSize)
         window.isReleasedWhenClosed = false
         window.backgroundColor = .clear
         window.center()
