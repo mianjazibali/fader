@@ -95,8 +95,12 @@
   }
   .btn-download:hover { background: var(--accent); border-color: var(--accent); color: var(--ink); }
 
-  /* Hero — split, copy on the left, live demo on the right. */
-  .hero { padding: 84px 0 90px; }
+  /* Hero — split, copy on the left, live demo on the right.
+     Top/bottom padding only (longhand, not the shorthand) — the
+     shorthand's implicit left/right:0 was overriding .container's own
+     horizontal padding, so the hero's content sat flush against the
+     edge instead of inset like every other section. */
+  .hero { padding-top: 84px; padding-bottom: 90px; }
   .hero-grid {
     display: grid;
     grid-template-columns: 1.15fr 1fr;
@@ -415,7 +419,7 @@
     h1 { font-size: clamp(38px, 9vw, 60px); }
   }
   @media (max-width: 720px) {
-    .hero { padding: 56px 0 40px; }
+    .hero { padding-top: 56px; padding-bottom: 40px; }
     nav .nav-right { gap: 14px; }
     nav a.nav-link { display: none; }
     .oss-tag { display: none; }
