@@ -7,12 +7,17 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 section(title: "Auto-Lower for Calls", icon: "waveform.badge.mic") {
-                    Toggle("Lower other apps during calls", isOn: $state.duckingEnabled)
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .font(.system(size: 13, weight: .medium))
+                    HStack {
+                        Text("Lower other apps during calls")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Toggle("", isOn: $state.duckingEnabled)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .labelsHidden()
+                    }
 
-                    Text("Quiets other apps while Zoom, Teams, or Slack is talking.")
+                    Text("Automatically turns other apps down while you're on a call.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .padding(.bottom, 6)

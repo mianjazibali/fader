@@ -30,24 +30,27 @@ struct ControlCenterView: View {
             }
 
             if !showSettings {
-                Divider().opacity(0.25)
+                VStack(spacing: 0) {
+                    Divider().opacity(0.25)
 
-                HeaderView(state: state)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 10)
-                    .padding(.bottom, 14)
+                    HeaderView(state: state)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+                        .padding(.bottom, 14)
+                }
+                .transition(.opacity)
             }
         }
         .frame(width: 340)
         // Same floor on both screens — Settings' natural content height
         // (~346pt) is now the panel's fixed height everywhere, so toggling
-        // between Main and Settings never resizes the popover at all.
+        // between Main and Settings never resizes the popover at all. That's
+        // what makes it safe to animate this swap (see the toggle button in
+        // FooterView): the auto-sizing MenuBarExtra(.window) popover never
+        // has to resize mid-animation, so there's nothing for the spring to
+        // fight.
         .frame(minHeight: 350, alignment: .top)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        // Not animated, same reason as MainPanel below: MainPanel and
-        // SettingsView have different natural heights, and animating that
-        // swap makes the auto-sizing MenuBarExtra(.window) popover fight
-        // the spring every frame instead of settling.
         //
         // MenuBarExtra(.window) keeps this view (and its @State) alive
         // across close/reopen — without resetting here, reopening the
@@ -219,6 +222,8 @@ private struct AutoLowerBanner: View {
 private struct FooterView: View {
     let engine: any AudioEngine
     @Binding var showSettings: Bool
+    @State private var isHoveringSettings = false
+    @State private var isHoveringPower = false
 
     var body: some View {
         // Every element gets the same 22pt-tall slot to center within —
@@ -258,20 +263,28 @@ private struct FooterView: View {
 
             // Settings toggle — same plain, no-background style as the
             // power button next to it, per the user's explicit request.
+            // Both screens are now pinned to the same height (see
+            // ControlCenterView), so this swap is safe to animate: the
+            // popover never has to resize mid-transition.
             Button {
-                // Not wrapped in withAnimation — see the note on
-                // ControlCenterView's body: animating this swap fights the
-                // auto-sizing popover window's own resize.
-                showSettings.toggle()
+                withAnimation(.snappy(duration: 0.28)) {
+                    showSettings.toggle()
+                }
             } label: {
                 Image(systemName: showSettings ? "chevron.left" : "gearshape.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .frame(width: 22, height: 22)
+                    .background(
+                        Circle().fill(Color.primary.opacity(isHoveringSettings ? 0.09 : 0))
+                    )
                     .contentTransition(.symbolEffect(.replace))
             }
             .buttonStyle(.plain)
             .help(showSettings ? "Back" : "Settings")
+            .onHover { hovering in
+                withAnimation(.easeOut(duration: 0.12)) { isHoveringSettings = hovering }
+            }
 
             Button {
                 NSApp.terminate(nil)
@@ -280,9 +293,15 @@ private struct FooterView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .frame(width: 22, height: 22)
+                    .background(
+                        Circle().fill(Color.primary.opacity(isHoveringPower ? 0.09 : 0))
+                    )
             }
             .buttonStyle(.plain)
             .help("Quit Fader")
+            .onHover { hovering in
+                withAnimation(.easeOut(duration: 0.12)) { isHoveringPower = hovering }
+            }
         }
     }
 
