@@ -778,9 +778,13 @@
   // ---- Demo audio ----
   // All three are real CC0 (public-domain-equivalent) recordings from
   // Freesound, mixed through the same per-app GainNode a slider already
-  // drives — see docs/audio/CREDITS.md for sources. All three loop for
-  // as long as they're relevant: Spotify/Chrome while sound is on,
-  // Zoom's chime for as long as the simulated call is active.
+  // drives — see docs/audio/CREDITS.md for sources. Spotify and Chrome
+  // are two stems from the SAME song (same 70 BPM / B major source),
+  // not two unrelated clips — a sustained dream pad and a filtered
+  // lead — so they're guaranteed to sound good layered together while
+  // still being obviously different voices. All three loop for as long
+  // as they're relevant: Spotify/Chrome while sound is on, Zoom's
+  // chime for as long as the simulated call is active.
   //
   // Fetching + decoding starts immediately on page load — that's silent,
   // so it doesn't touch the browser's autoplay policy. Actual playback
@@ -793,7 +797,7 @@
   const bufferSources = {};
   const audioFiles = {
     spotify: 'audio/spotify-drone.mp3',
-    chrome: 'audio/chrome-chimes.mp3',
+    chrome: 'audio/chrome-lead.mp3',
     zoom: 'audio/zoom-chime.mp3',
   };
   const bufferPromises = {};
@@ -809,20 +813,50 @@
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }
-  function getAppGain(id) {
-    if (!appGainNodes[id]) {
-      const g = audioCtx.createGain();
-      g.gain.value = 0;
-      g.connect(audioCtx.destination);
-      appGainNodes[id] = g;
+  // Same-song stems guarantee spotify+chrome are harmonically compatible,
+  // but that alone isn't enough to make them sound like two DISTINCT
+  // layers rather than one blurred wash — the pad naturally fills the
+  // same low/mid space the lead sits in and buries it. Carve separate
+  // frequency lanes for each (classic mix technique: high-pass the lead,
+  // low-pass the pad) and give the lead more headroom so it actually
+  // cuts through instead of getting masked underneath the pad.
+  const appInputNodes = {};
+  const FILTERS = {
+    spotify: { type: 'lowpass', frequency: 2600 },
+    chrome:  { type: 'highpass', frequency: 400 },
+  };
+  const HEADROOM = { spotify: 0.45, chrome: 0.7, zoom: 0.55 };
+  function ensureAppChain(id) {
+    if (appGainNodes[id]) return;
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0;
+    gain.connect(audioCtx.destination);
+    appGainNodes[id] = gain;
+
+    let input = gain;
+    const f = FILTERS[id];
+    if (f) {
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = f.type;
+      filter.frequency.value = f.frequency;
+      filter.connect(gain);
+      input = filter;
     }
+    appInputNodes[id] = input;
+  }
+  function getAppGain(id) {
+    ensureAppChain(id);
     return appGainNodes[id];
+  }
+  function getAppInput(id) {
+    ensureAppChain(id);
+    return appInputNodes[id];
   }
   function effectiveLevel(app) {
     if (!audioOn || app.muted) return 0;
     const ducked = callActive && !app.comm;
     const pct = ducked ? app.volume * 0.5 : app.volume;
-    return Math.max(0, Math.min(1, pct / 100)) * 0.55; // headroom so 3 loops together don't clip
+    return Math.max(0, Math.min(1, pct / 100)) * (HEADROOM[app.id] || 0.55);
   }
   function updateAllAudioGains() {
     if (!audioCtx) return;
@@ -837,7 +871,7 @@
     const src = audioCtx.createBufferSource();
     src.buffer = buffer;
     src.loop = true;
-    src.connect(getAppGain(id));
+    src.connect(getAppInput(id));
     src.start(0);
     bufferSources[id] = src;
   }
