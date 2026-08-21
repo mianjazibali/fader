@@ -40,11 +40,19 @@ struct FluidSlider: View {
                         .frame(width: fillWidth)
 
                     if meterWidth > 1 {
+                        // Deliberately NOT animated: levelMeter updates every
+                        // ~200ms for as long as the app is playing audio,
+                        // which would otherwise be a continuous stream of
+                        // animation transactions inside the
+                        // MenuBarExtra(.window) popover — same root cause as
+                        // the last two "grows/shrinks on repeat" bugs, just
+                        // a quieter source that only shows up with real
+                        // audio actively playing (which is exactly when
+                        // this got tested against a live app).
                         Capsule()
                             .fill(.white.opacity(0.22))
                             .frame(width: meterWidth)
                             .blendMode(.plusLighter)
-                            .animation(.easeOut(duration: 0.08), value: meterWidth)
                     }
                 }
                 .frame(height: height)

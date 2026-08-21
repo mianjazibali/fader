@@ -100,16 +100,12 @@ private struct MainPanel: View {
 }
 
 private struct EmptyStateView: View {
-    @State private var pulse: Bool = false
-
     var body: some View {
         VStack(spacing: 10) {
             ZStack {
                 Circle()
                     .stroke(Brand.softGradient(opacity: 0.35), lineWidth: 1.5)
                     .frame(width: 56, height: 56)
-                    .scaleEffect(pulse ? 1.08 : 1.0)
-                    .opacity(pulse ? 0.6 : 1.0)
                 Image(systemName: "slider.vertical.3")
                     .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(Brand.gradient)
@@ -128,11 +124,12 @@ private struct EmptyStateView: View {
                 .frame(maxWidth: 240)
         }
         .frame(maxWidth: .infinity)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
-                pulse = true
-            }
-        }
+        // Deliberately static — no pulse/repeatForever animation. An
+        // infinite, always-running animation inside a MenuBarExtra(.window)
+        // popover is the same risk pattern that caused three separate
+        // "grows/shrinks on repeat" bugs this session (ducking banner,
+        // hover-preview, level meter), just not yet confirmed as a fourth
+        // trigger.
     }
 }
 
