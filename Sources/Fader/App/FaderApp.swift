@@ -63,14 +63,15 @@ struct FaderApp: App {
     }
 }
 
-/// The icon that lives in the menu bar. Always a waveform — single
-/// consistent identity. We do not switch to a speaker glyph based on state
-/// because users found it confusing.
+/// The icon that lives in the menu bar. Always the fader glyph — single
+/// consistent identity, matching the app icon and in-app brand mark. We do
+/// not switch to a speaker glyph based on state because users found it
+/// confusing.
 struct MenuBarLabel: View {
     @Bindable var state: AudioState
 
     var body: some View {
-        Image(systemName: "waveform")
+        Image(systemName: "slider.vertical.3")
             .symbolRenderingMode(.hierarchical)
             // Subtle visual cue when any app is producing output, without
             // changing the icon's silhouette.

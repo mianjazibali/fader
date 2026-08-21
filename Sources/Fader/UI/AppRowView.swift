@@ -63,7 +63,6 @@ struct AppRowView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(rowBackground)
-        .overlay(alignment: .leading) { activeMarker }
         .animation(.snappy, value: app.isActive)
         .animation(.snappy, value: app.isMuted)
         .contextMenu {
@@ -91,20 +90,6 @@ struct AppRowView: View {
                     .stroke(Color.red.opacity(0.18), lineWidth: 0.5))
         } else {
             Color.clear
-        }
-    }
-
-    @ViewBuilder
-    private var activeMarker: some View {
-        if app.isActive && !app.isMuted {
-            Capsule()
-                .fill(LinearGradient(
-                    colors: [.cyan, .blue],
-                    startPoint: .top, endPoint: .bottom
-                ))
-                .frame(width: 3, height: 22)
-                .padding(.leading, 3)
-                .transition(.scale.combined(with: .opacity))
         }
     }
 

@@ -4,11 +4,7 @@ import SwiftUI
 /// capsule track with a solid fill and no separate thumb — the fill's own
 /// edge is the indicator — flanked by static min/max icons OUTSIDE the
 /// track (quiet on the left, loud on the right), not embedded inside it.
-///
-/// Hovering (without pressing) previews where a click would land: the fill
-/// ghosts to a lower opacity and tracks the cursor instead of the real
-/// value, snapping back once the cursor leaves. Dragging commits for real,
-/// same as before.
+/// The fill uses the app's brand gradient, the same on every slider.
 struct FluidSlider: View {
     @Binding var value: Double          // 0...1
     var height: CGFloat = 24
@@ -22,7 +18,6 @@ struct FluidSlider: View {
     var onMinIconTap: (() -> Void)? = nil
 
     @State private var isDragging = false
-    @State private var hoverFraction: Double? = nil
 
     var body: some View {
         HStack(spacing: 8) {
@@ -33,19 +28,15 @@ struct FluidSlider: View {
             GeometryReader { geo in
                 let w = geo.size.width
                 let clampedValue = max(0, min(1, value))
-                // Real value while idle or dragging; a ghosted preview of
-                // where a click would land while just hovering.
-                let previewing = !isDragging && hoverFraction != nil
-                let displayedFraction = isDragging ? clampedValue : (hoverFraction ?? clampedValue)
-                let fillWidth = displayedFraction * w
-                let meterWidth = max(0, min(1, levelMeter)) * (clampedValue * w)
+                let fillWidth = clampedValue * w
+                let meterWidth = max(0, min(1, levelMeter)) * fillWidth
 
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.primary.opacity(0.12))
+                        .fill(Color.primary.opacity(0.10))
 
                     Capsule()
-                        .fill(Color.primary.opacity(previewing ? 0.55 : 0.92))
+                        .fill(Brand.horizontalGradient)
                         .frame(width: fillWidth)
 
                     if meterWidth > 1 {
@@ -59,32 +50,14 @@ struct FluidSlider: View {
                 .frame(height: height)
                 .scaleEffect(isDragging ? 1.02 : 1.0, anchor: .leading)
                 .animation(.spring(response: 0.2, dampingFraction: 0.75), value: isDragging)
-                // Deliberately NOT animated: onContinuousHover fires on
-                // nearly every mouse-move, and wrapping that in .animation
-                // means a constant stream of animation transactions inside
-                // the MenuBarExtra(.window) popover — which is exactly what
-                // caused the earlier "grows/shrinks on repeat" bug, even
-                // though this only touches fill width, not the popover's
-                // own layout size. Instant updates avoid the churn.
                 .contentShape(Rectangle())
-                .onContinuousHover { phase in
-                    switch phase {
-                    case .active(let location):
-                        hoverFraction = max(0, min(1, location.x / w))
-                    case .ended:
-                        hoverFraction = nil
-                    }
-                }
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { g in
                             isDragging = true
                             value = Double(max(0, min(1, g.location.x / w)))
                         }
-                        .onEnded { _ in
-                            isDragging = false
-                            hoverFraction = nil
-                        }
+                        .onEnded { _ in isDragging = false }
                 )
             }
             .frame(height: height)

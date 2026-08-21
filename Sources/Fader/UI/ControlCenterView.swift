@@ -106,20 +106,13 @@ private struct EmptyStateView: View {
         VStack(spacing: 10) {
             ZStack {
                 Circle()
-                    .stroke(LinearGradient(
-                        colors: [.cyan.opacity(0.4), .blue.opacity(0.3), .purple.opacity(0.3)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ), lineWidth: 1.5)
+                    .stroke(Brand.softGradient(opacity: 0.35), lineWidth: 1.5)
                     .frame(width: 56, height: 56)
                     .scaleEffect(pulse ? 1.08 : 1.0)
                     .opacity(pulse ? 0.6 : 1.0)
-                Image(systemName: "waveform")
+                Image(systemName: "slider.vertical.3")
                     .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(LinearGradient(
-                        colors: [.cyan, .blue],
-                        startPoint: .top, endPoint: .bottom
-                    ))
-                    .symbolEffect(.variableColor.iterative, options: .repeating, value: pulse)
+                    .foregroundStyle(Brand.gradient)
             }
             .frame(height: 64)
 
@@ -149,29 +142,16 @@ private struct HeaderView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Brand gradient mini-icon with the same waveform glyph as the bundle.
+            // Brand gradient mini-icon with the same mark as the app icon.
             ZStack {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.12, green: 0.88, blue: 1.00),
-                                Color(red: 0.10, green: 0.30, blue: 1.00),
-                                Color(red: 0.48, green: 0.12, blue: 1.00)
-                            ],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(Brand.gradient)
                     .frame(width: 30, height: 30)
-                    .shadow(color: .blue.opacity(0.30), radius: 6, y: 2)
+                    .shadow(color: Brand.orange.opacity(0.30), radius: 6, y: 2)
 
-                HStack(spacing: 1.5) {
-                    Capsule().fill(.white).frame(width: 2, height: 8)
-                    Capsule().fill(.white).frame(width: 2, height: 14)
-                    Capsule().fill(.white).frame(width: 2, height: 18)
-                    Capsule().fill(.white).frame(width: 2, height: 12)
-                    Capsule().fill(.white).frame(width: 2, height: 6)
-                }
+                Image(systemName: "slider.vertical.3")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
