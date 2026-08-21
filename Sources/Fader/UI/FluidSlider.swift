@@ -13,7 +13,8 @@ struct FluidSlider: View {
     /// with no natural icon (e.g. the ducking-amount slider).
     var minIcon: String? = nil
     var maxIcon: String? = nil
-    /// Live level meter (0...1). Drawn as a soft glow inside the filled region.
+    /// Live level meter (0...1). Brightens the fill's opacity slightly —
+    /// real audio-derived value, see CoreAudioEngine.tickPulse.
     var levelMeter: Double = 0
     /// Tapping the min icon (e.g. mute toggle) — nil makes it non-interactive.
     var onMinIconTap: (() -> Void)? = nil
@@ -30,31 +31,22 @@ struct FluidSlider: View {
                 let w = geo.size.width
                 let clampedValue = max(0, min(1, value))
                 let fillWidth = clampedValue * w
-                let meterWidth = max(0, min(1, levelMeter)) * fillWidth
+                // Live level brightens the WHOLE fill's opacity rather than
+                // overlaying a second, shorter capsule on top of it — a
+                // separate glow shape shorter than the fill has its own
+                // rounded end sitting in the middle of the track, which
+                // reads as a floating thumb, not a glow. A single shape
+                // whose fill value just varies can't create that seam.
+                let level = max(0, min(1, levelMeter))
+                let fillOpacity = 0.78 + level * 0.17
 
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.primary.opacity(0.10))
 
                     Capsule()
-                        .fill(Color.primary.opacity(0.92))
+                        .fill(Color.primary.opacity(fillOpacity))
                         .frame(width: fillWidth)
-
-                    if meterWidth > 1 {
-                        // Deliberately NOT animated: levelMeter updates every
-                        // ~200ms for as long as the app is playing audio,
-                        // which would otherwise be a continuous stream of
-                        // animation transactions inside the
-                        // MenuBarExtra(.window) popover — same root cause as
-                        // the last two "grows/shrinks on repeat" bugs, just
-                        // a quieter source that only shows up with real
-                        // audio actively playing (which is exactly when
-                        // this got tested against a live app).
-                        Capsule()
-                            .fill(.white.opacity(0.22))
-                            .frame(width: meterWidth)
-                            .blendMode(.plusLighter)
-                    }
                 }
                 .frame(height: height)
                 .scaleEffect(isDragging ? 1.02 : 1.0, anchor: .leading)

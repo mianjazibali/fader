@@ -39,7 +39,11 @@ struct ControlCenterView: View {
                 .padding(.bottom, 14)
         }
         .frame(width: 340)
-        .frame(minHeight: 280)
+        // No minHeight: it was sized for the old, taller empty state (big
+        // icon + more padding). Now that the empty state is intentionally
+        // compact, a fixed floor just forces an awkward blank gap to fill
+        // the difference. The panel sizes to its actual content instead —
+        // MenuBarExtra(.window) already auto-sizes, so nothing is lost.
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         // Not animated, same reason as MainPanel below: MainPanel and
         // SettingsView have different natural heights, and animating that
