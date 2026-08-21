@@ -53,6 +53,13 @@ final class AggregateOutputDevice {
     var samplesToRing:  UInt64 { counterBuffer[1] }
     var ringOverruns:   UInt64 { counterBuffer[2] }
 
+    /// Diagnostic only: peak |sample| seen in the most recent callback.
+    /// [0] = raw tap input (pre-gain), [1] = mixed output (post-gain/clip) —
+    /// lets us tell "silent tap" apart from "audio lost downstream".
+    private let peakBuffer: UnsafeMutableBufferPointer<Float>
+    var lastInputPeak: Float { peakBuffer[0] }
+    var lastMixPeak: Float { peakBuffer[1] }
+
     private let slotCount: Int
 
     /// One-shot diagnostic so we know the buffer layout at runtime.
@@ -77,6 +84,10 @@ final class AggregateOutputDevice {
         let cbuf = UnsafeMutableBufferPointer<UInt64>.allocate(capacity: 3)
         cbuf.initialize(repeating: 0)
         self.counterBuffer = cbuf
+
+        let pbuf = UnsafeMutableBufferPointer<Float>.allocate(capacity: 2)
+        pbuf.initialize(repeating: 0)
+        self.peakBuffer = pbuf
 
         // Build a private aggregate. We DO include the user's output device
         // as a sub-device — gives us a stable clock source matching the
@@ -118,12 +129,14 @@ final class AggregateOutputDevice {
         AudioHardwareDestroyAggregateDevice(aggregateID)
         gainBuffer.deallocate()
         counterBuffer.deallocate()
+        peakBuffer.deallocate()
         didLogPtr?.deallocate()
     }
 
     func start() throws {
         let gainPtr = gainBuffer.baseAddress!
         let counterPtr = counterBuffer.baseAddress!
+        let peakPtr = peakBuffer.baseAddress!
         let count = slotCount
         let ring = ringBuffer
 
@@ -144,6 +157,7 @@ final class AggregateOutputDevice {
                 slotCount: count,
                 ring: ring,
                 counters: counterPtr,
+                peaks: peakPtr,
                 didLog: didLog
             )
         }
@@ -182,6 +196,7 @@ final class AggregateOutputDevice {
         slotCount: Int,
         ring: FloatRingBuffer,
         counters: UnsafeMutablePointer<UInt64>,
+        peaks: UnsafeMutablePointer<Float>,
         didLog: UnsafeMutablePointer<UInt32>
     ) {
         let inList = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
@@ -226,6 +241,7 @@ final class AggregateOutputDevice {
             mixBuf.update(repeating: 0)
 
             var totalIn: UInt64 = 0
+            var inputPeak: Float = 0
 
             for i in 0..<tapCount {
                 let inB = inList[i]
@@ -233,6 +249,11 @@ final class AggregateOutputDevice {
                 let inFloats = mData.assumingMemoryBound(to: Float.self)
                 let inSamples = Int(inB.mDataByteSize) / MemoryLayout<Float>.size
                 totalIn &+= UInt64(inSamples)
+
+                for f in 0..<inSamples {
+                    let a = abs(inFloats[f])
+                    if a > inputPeak { inputPeak = a }
+                }
 
                 let g = gains.advanced(by: i).pointee
                 if g == 0 { continue }
@@ -242,13 +263,19 @@ final class AggregateOutputDevice {
                     mixBuf[f] += inFloats[f] * g
                 }
             }
+            peaks[0] = inputPeak
 
             // Soft clip to prevent overshoot.
+            var mixPeak: Float = 0
             for f in 0..<mixSamples {
-                let s = mixBuf[f]
-                if s > 1.0 { mixBuf[f] = 1.0 }
-                else if s < -1.0 { mixBuf[f] = -1.0 }
+                var s = mixBuf[f]
+                if s > 1.0 { s = 1.0 }
+                else if s < -1.0 { s = -1.0 }
+                mixBuf[f] = s
+                let a = abs(s)
+                if a > mixPeak { mixPeak = a }
             }
+            peaks[1] = mixPeak
 
             // Publish to ring buffer for the playback IOProc to consume.
             let written = ring.write(mixBuf.baseAddress!, count: mixSamples)

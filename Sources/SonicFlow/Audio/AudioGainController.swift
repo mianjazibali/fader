@@ -35,11 +35,35 @@ final class AudioGainController {
     private var lastActiveBundles: Set<String> = []
     private var statsTask: Task<Void, Never>?
 
+    /// Remembered so a default-output-device change (headphones/Bluetooth
+    /// plug/unplug) can force a rebuild even when the active app set hasn't
+    /// changed. Without this, taps + the playback IOProc stay bound to the
+    /// device that just disappeared and audio silently stops flowing.
+    private var lastActiveApps: [AudioApp] = []
+    private var lastProcessIDByBundle: [String: AudioObjectID] = [:]
+    private let deviceChangeQueue = DispatchQueue(label: "com.sonicflow.gain-controller.device-change")
+    private var deviceChangeListener: ListenerHandle?
+
+    init() {
+        deviceChangeListener = CAObject.addListener(
+            on: AudioObjectID(kAudioObjectSystemObject),
+            selector: .defaultOutputDevice,
+            queue: deviceChangeQueue
+        ) { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.rebuildForDeviceChange()
+            }
+        }
+    }
+
     // Kept for source-compat with the signal handler; no longer used since
     // we don't switch system default output. Leaving in for safety.
     nonisolated(unsafe) static var crashCleanupSavedDefault: AudioObjectID?
 
     func apply(active: [AudioApp], processIDByBundle: [String: AudioObjectID]) {
+        lastActiveApps = active
+        lastProcessIDByBundle = processIDByBundle
+
         let bundles = Set(active.map(\.id))
         guard bundles != lastActiveBundles else { return }
         log("active set changed: [\(bundles.sorted().joined(separator: ", "))]")
@@ -69,6 +93,8 @@ final class AudioGainController {
     }
 
     func shutdown() {
+        deviceChangeListener?.dispose()
+        deviceChangeListener = nil
         teardown()
         statsTask?.cancel()
         statsTask = nil
@@ -76,6 +102,17 @@ final class AudioGainController {
     }
 
     // MARK: - Private
+
+    /// The default output device changed (e.g. Bluetooth connected/
+    /// disconnected, headphones plugged in). `installTaps` re-reads the
+    /// *current* default output device, so forcing a rebuild here is enough
+    /// to rebind — even though the active app set itself hasn't changed.
+    private func rebuildForDeviceChange() {
+        guard !lastActiveApps.isEmpty else { return }
+        log("default output device changed — rebuilding pipeline")
+        lastActiveBundles = []
+        apply(active: lastActiveApps, processIDByBundle: lastProcessIDByBundle)
+    }
 
     private func installTaps(for active: [AudioApp], processIDByBundle: [String: AudioObjectID]) throws {
         let sys = AudioObjectID(kAudioObjectSystemObject)
@@ -161,7 +198,7 @@ final class AudioGainController {
                 let gainSummary = self.slotByBundle
                     .map { "\($0.key.suffix(20))=\(String(format: "%.2f", $0.value.gain))" }
                     .joined(separator: ", ")
-                logFn("stats: tap=\(inDelta) ring=\(ring.fillLevel) playback=\(outDelta) underrun=\(underDelta) /2s | \(gainSummary)")
+                logFn("stats: tap=\(inDelta) ring=\(ring.fillLevel) playback=\(outDelta) underrun=\(underDelta) inputPeak=\(String(format: "%.4f", cap.lastInputPeak)) mixPeak=\(String(format: "%.4f", cap.lastMixPeak)) /2s | \(gainSummary)")
             }
         }
     }
