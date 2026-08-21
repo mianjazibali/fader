@@ -1,4 +1,5 @@
 import SwiftUI
+import Darwin
 
 @main
 struct FaderApp: App {
@@ -15,6 +16,22 @@ struct FaderApp: App {
     }()
 
     init() {
+        // Only one Fader process may run at a time. A second one would spin
+        // up its own CoreAudioEngine — a second set of Process Taps and its
+        // own aggregate device — fighting the first over the exact same
+        // audio routing, on top of showing a duplicate menu bar icon. This
+        // is a real risk in practice: the LaunchAgent instance is always
+        // running, so launching another copy (double-click, `open -a`, a
+        // `--preview` build) would collide with it.
+        //
+        // flock() on a fixed file, held for the process's entire lifetime.
+        // The kernel releases the lock automatically when the file
+        // descriptor closes — on clean quit, crash, or `kill -9` alike —
+        // so a stale lock can never strand a future launch.
+        guard Self.acquireSingleInstanceLock() else {
+            exit(0)
+        }
+
         // Engine must start before the menu bar opens — otherwise users with a
         // menu bar manager (Ice, Bartender) never trigger the .task hook and
         // detection/gain never come online.
@@ -25,6 +42,20 @@ struct FaderApp: App {
                 await Self.runGainCycleTest(engine: e)
             }
         }
+    }
+
+    /// Returns false if another Fader process already holds the lock.
+    private static func acquireSingleInstanceLock() -> Bool {
+        let path = NSTemporaryDirectory() + "com.fader.app.lock"
+        let fd = open(path, O_CREAT | O_RDWR, 0o644)
+        guard fd >= 0 else { return true } // Can't even open it — don't block launch over that.
+        guard flock(fd, LOCK_EX | LOCK_NB) == 0 else {
+            close(fd)
+            return false
+        }
+        // Deliberately never closed: the open fd IS the lock, held until
+        // this process exits.
+        return true
     }
 
     /// Verification helper: every 3s, set the first detected app's volume to
