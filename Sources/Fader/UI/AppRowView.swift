@@ -19,7 +19,7 @@ struct AppRowView: View {
                     Image(systemName: "person.wave.2.fill")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.orange)
-                        .help("Communication app — triggers ducking when active")
+                        .help("Communication app — lowers other apps' volume during calls")
                 }
 
                 Spacer(minLength: 0)

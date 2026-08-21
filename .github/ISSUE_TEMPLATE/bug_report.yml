@@ -1,0 +1,33 @@
+name: Bug report
+description: Something in Fader isn't working right
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect instead?
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: e.g. macOS 15.2 Sequoia
+    validations:
+      required: true
+  - type: input
+    id: fader-version
+    attributes:
+      label: Fader version
+      description: Shown in Settings → About
+      placeholder: e.g. 0.2.0
+    validations:
+      required: true
+  - type: textarea
+    id: apps
+    attributes:
+      label: Which app(s) were you controlling volume for, if relevant?
+      placeholder: e.g. Chrome, Spotify, Zoom
+    validations:
+      required: false

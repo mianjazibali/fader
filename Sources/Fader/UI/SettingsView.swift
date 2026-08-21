@@ -6,13 +6,13 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                section(title: "Ducking", icon: "waveform.badge.mic") {
-                    Toggle("Auto-duck when someone speaks", isOn: $state.duckingEnabled)
+                section(title: "Auto-Lower for Calls", icon: "waveform.badge.mic") {
+                    Toggle("Lower other apps during calls", isOn: $state.duckingEnabled)
                         .toggleStyle(.switch)
                         .controlSize(.small)
                         .font(.system(size: 13, weight: .medium))
 
-                    Text("Comm apps (Zoom, Teams, Slack) automatically lower everything else when they're outputting voice.")
+                    Text("Quiets other apps while Zoom, Teams, or Slack is talking.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .padding(.bottom, 6)
@@ -32,36 +32,28 @@ struct SettingsView: View {
 
                 section(title: "About", icon: "sparkles") {
                     InfoLine(label: "Version", value: "0.2.0")
-                    InfoLine(label: "Engine", value: "CoreAudio Process Taps")
-                    InfoLine(label: "CPU target", value: "< 1%")
-                    InfoLine(label: "License", value: "MIT · Free + open source")
 
-                    HStack(spacing: 8) {
-                        Link(destination: URL(string: "https://github.com/mianjazibali/fader")!) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "chevron.left.forwardslash.chevron.right")
-                                    .font(.system(size: 10, weight: .semibold))
-                                Text("GitHub")
-                                    .font(.system(size: 11, weight: .semibold))
-                            }
-                            .foregroundStyle(.tint)
+                    Link(destination: URL(string: "https://github.com/mianjazibali/fader/issues/new/choose")!) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "ladybug")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text("Report a bug")
+                                .font(.system(size: 11, weight: .semibold))
                         }
-                        Link(destination: URL(string: "https://github.com/mianjazibali/fader/issues")!) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "ladybug")
-                                    .font(.system(size: 10, weight: .semibold))
-                                Text("Report a bug")
-                                    .font(.system(size: 11, weight: .semibold))
-                            }
-                            .foregroundStyle(.tint)
-                        }
-                        Spacer()
+                        .foregroundStyle(.tint)
                     }
                     .padding(.top, 4)
                 }
             }
             .padding(16)
         }
+        // Matches MainPanel's ScrollView cap (360) — an unconstrained
+        // ScrollView leaves its ideal height ambiguous/unbounded, which is
+        // exactly the kind of thing that can send an auto-sizing container
+        // (the MenuBarExtra popover, or an NSHostingController-backed
+        // window in --preview) into a runaway layout-invalidation loop
+        // trying to resolve it.
+        .frame(maxHeight: 400)
     }
 
     @ViewBuilder

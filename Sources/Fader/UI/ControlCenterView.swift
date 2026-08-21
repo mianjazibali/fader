@@ -8,20 +8,21 @@ struct ControlCenterView: View {
     var body: some View {
         @Bindable var state = engine.state
 
-        // FooterView/HeaderView are both top-level (shared across the main
-        // and settings screens) rather than HeaderView living up top and
-        // FooterView being nested only inside MainPanel — that's what
-        // caused the two screens to look inconsistent when switching
-        // (settings had no footer strip at all, and the header was the
-        // only shared chrome). Now both strips are identical regardless of
-        // which screen is showing.
+        // FooterView/HeaderView are both top-level (shared, not nested
+        // inside MainPanel) so their padding/position stays identical
+        // whenever they DO show on both screens. The settings screen hides
+        // most of their content (see below) to stay simple/uncluttered,
+        // but what remains (the divider layout, the back button's slot)
+        // still lines up the same way, not two independently-built strips.
         VStack(spacing: 0) {
-            FooterView(engine: engine)
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
-                .padding(.bottom, 10)
+            if !showSettings {
+                FooterView(engine: engine)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+                    .padding(.bottom, 10)
 
-            Divider().opacity(0.3)
+                Divider().opacity(0.3)
+            }
 
             if showSettings {
                 SettingsView(state: state)
@@ -49,6 +50,13 @@ struct ControlCenterView: View {
         // SettingsView have different natural heights, and animating that
         // swap makes the auto-sizing MenuBarExtra(.window) popover fight
         // the spring every frame instead of settling.
+        //
+        // MenuBarExtra(.window) keeps this view (and its @State) alive
+        // across close/reopen — without resetting here, reopening the
+        // popover after leaving it on Settings would still show Settings.
+        // Every fresh click on the menu bar icon should land on the main
+        // screen.
+        .onAppear { showSettings = false }
     }
 }
 
@@ -65,7 +73,7 @@ private struct MainPanel: View {
 
         VStack(spacing: 0) {
             if state.duckingEnabled && state.isAnyCommunicationActive {
-                DuckingBanner(amount: state.duckingAmount)
+                AutoLowerBanner(amount: state.duckingAmount)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -135,32 +143,40 @@ private struct HeaderView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Brand gradient mini-icon with the same mark as the app icon.
-            ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Brand.gradient)
-                    .frame(width: 30, height: 30)
-                    .shadow(color: Brand.orange.opacity(0.30), radius: 6, y: 2)
-
-                Image(systemName: "slider.vertical.3")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Fader")
+            if showSettings {
+                // Simple/uncluttered on the settings screen — no need to
+                // repeat the brand mark or "no audio playing" status here.
+                Text("Settings")
                     .font(.system(size: 15, weight: .bold))
                     .tracking(-0.2)
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(state.apps.contains(where: { $0.isActive }) ? .green : .secondary.opacity(0.4))
-                        .frame(width: 5, height: 5)
-                    Text(statusText)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .contentTransition(.opacity)
+            } else {
+                // Brand gradient mini-icon with the same mark as the app icon.
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Brand.gradient)
+                        .frame(width: 30, height: 30)
+                        .shadow(color: Brand.orange.opacity(0.30), radius: 6, y: 2)
+
+                    Image(systemName: "slider.vertical.3")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Fader")
+                        .font(.system(size: 15, weight: .bold))
+                        .tracking(-0.2)
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(state.apps.contains(where: { $0.isActive }) ? .green : .secondary.opacity(0.4))
+                            .frame(width: 5, height: 5)
+                        Text(statusText)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .contentTransition(.opacity)
+                    }
                 }
             }
 
@@ -194,7 +210,7 @@ private struct HeaderView: View {
     }
 }
 
-private struct DuckingBanner: View {
+private struct AutoLowerBanner: View {
     let amount: Float
 
     var body: some View {
@@ -203,7 +219,7 @@ private struct DuckingBanner: View {
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(.orange)
                 .symbolEffect(.variableColor.iterative, options: .repeating)
-            Text("Ducking active · others lowered \(Int(amount * 100))%")
+            Text("On a call · others lowered \(Int(amount * 100))%")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.primary)
             Spacer(minLength: 0)
