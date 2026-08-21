@@ -775,20 +775,36 @@
   const zoomApp = { id: 'zoom', name: 'zoom.us', volume: 95, muted: false, comm: true };
   let callActive = false;
 
-  // ---- Demo audio synth ----
-  // No audio files to host or license — each "app" is a tiny generated
-  // loop (Web Audio oscillators), so dragging a slider changes something
-  // you can actually hear, live. AudioContext is only ever created inside
-  // the sound-toggle button's click handler — never on page load or a
-  // slider drag — so this respects the browser's autoplay policy and
-  // never makes noise the visitor didn't ask for.
+  // ---- Demo audio ----
+  // Spotify and Chrome play two real CC0 (public-domain-equivalent)
+  // recordings from Freesound — a warm ambient synth drone and a wind
+  // chimes texture — as looping buffers, mixed through the same
+  // per-app GainNode a slider already drives. Zoom's ring stays a tiny
+  // generated tone (see playNote/scheduleZoomLoop below): there's no
+  // third source file, and a synthesized ring reads fine as a phone
+  // alert rather than ambience. See docs/audio/CREDITS.md for sources.
+  //
+  // Fetching + decoding the two files starts immediately on page load —
+  // that's silent, so it doesn't touch the browser's autoplay policy.
+  // Actual playback only ever starts inside the play button's click
+  // handler, same as before, so nothing plays until the visitor asks.
   let audioOn = false;
-  let audioCtx = null;
+  let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const appGainNodes = {};
-  const loopRunning = { spotify: false, chrome: false, zoom: false };
+  const audioBuffers = {};
+  const bufferSources = {};
+  const loopRunning = { zoom: false };
+  const audioFiles = { spotify: 'audio/spotify-drone.mp3', chrome: 'audio/chrome-chimes.mp3' };
+  const bufferPromises = {};
+  Object.keys(audioFiles).forEach(id => {
+    bufferPromises[id] = fetch(audioFiles[id])
+      .then(r => r.arrayBuffer())
+      .then(data => audioCtx.decodeAudioData(data))
+      .then(buffer => { audioBuffers[id] = buffer; return buffer; })
+      .catch(err => console.warn('Demo audio failed to load:', id, err));
+  });
 
   function ensureAudioCtx() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }
@@ -825,34 +841,26 @@
     osc.start(startTime);
     osc.stop(startTime + dur + 0.05);
   }
-  function scheduleSpotifyLoop() {
-    if (loopRunning.spotify) return;
-    loopRunning.spotify = true;
-    const notes = [261.63, 329.63, 392.0, 329.63, 440.0, 392.0, 329.63, 293.66];
-    let i = 0;
-    (function tick() {
-      if (!audioOn) { loopRunning.spotify = false; return; }
-      playNote(getAppGain('spotify'), notes[i++ % notes.length], 'sine', audioCtx.currentTime, 0.5, 1);
-      setTimeout(tick, 300);
-    })();
+  function startBufferLoop(id) {
+    if (bufferSources[id]) return; // already playing
+    const buffer = audioBuffers[id];
+    if (!buffer) return; // not decoded yet — playWhenReady retries once it is
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+    src.connect(getAppGain(id));
+    src.start(0);
+    bufferSources[id] = src;
   }
-  function scheduleChromeLoop() {
-    // A complementary counter-melody, not a rival one: same key as
-    // Spotify (C major) but an octave up, a softer bell-like triangle
-    // wave instead of sine, on a slower beat that's offset to land in
-    // the gaps between Spotify's notes. The two interlock like two
-    // instruments in the same song, rather than clashing or blurring
-    // into one indistinguishable layer.
-    if (loopRunning.chrome) return;
-    loopRunning.chrome = true;
-    const notes = [523.25, 783.99, 659.25, 523.25]; // C5 G5 E5 C5
-    let i = 0;
-    function tick() {
-      if (!audioOn) { loopRunning.chrome = false; return; }
-      playNote(getAppGain('chrome'), notes[i++ % notes.length], 'triangle', audioCtx.currentTime, 0.4, 0.85);
-      setTimeout(tick, 600);
-    }
-    setTimeout(tick, 150); // offset from Spotify's beat so notes land between, not on top
+  function stopBufferLoop(id) {
+    const src = bufferSources[id];
+    if (!src) return;
+    try { src.stop(); } catch (e) {}
+    delete bufferSources[id];
+  }
+  function playWhenReady(id) {
+    if (audioBuffers[id]) { startBufferLoop(id); return; }
+    bufferPromises[id].then(() => { if (audioOn) startBufferLoop(id); });
   }
   function scheduleZoomLoop() {
     if (loopRunning.zoom) return;
@@ -875,9 +883,12 @@
     btn.title = audioOn ? 'Stop demo sound' : 'Play demo sound';
     document.getElementById('soundIcon').innerHTML = audioOn ? pauseIcon : playIcon;
     if (audioOn) {
-      scheduleSpotifyLoop();
-      scheduleChromeLoop();
+      playWhenReady('spotify');
+      playWhenReady('chrome');
       if (callActive) scheduleZoomLoop();
+    } else {
+      stopBufferLoop('spotify');
+      stopBufferLoop('chrome');
     }
     updateAllAudioGains();
   }
