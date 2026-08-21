@@ -39,14 +39,10 @@ struct ControlCenterView: View {
             }
         }
         .frame(width: 340)
-        // minHeight is scoped to Settings only, not global: Settings'
-        // measured natural content height is ~346pt (its two sections vs.
-        // Main's single-row-height app list), so without a floor the panel
-        // visibly shrinks then grows again when switching screens. A
-        // *global* floor was tried before and reverted — it forced an
-        // awkward blank gap under the (intentionally compact) empty state
-        // on Main, which has no such tall content to fill it.
-        .frame(minHeight: showSettings ? 350 : nil)
+        // Same floor on both screens — Settings' natural content height
+        // (~346pt) is now the panel's fixed height everywhere, so toggling
+        // between Main and Settings never resizes the popover at all.
+        .frame(minHeight: 350, alignment: .top)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         // Not animated, same reason as MainPanel below: MainPanel and
         // SettingsView have different natural heights, and animating that
@@ -82,8 +78,9 @@ private struct MainPanel: View {
             }
 
             if visibleApps.isEmpty {
+                Spacer(minLength: 0)
                 EmptyStateView()
-                    .padding(.vertical, 24)
+                Spacer(minLength: 0)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 4) {
@@ -100,10 +97,16 @@ private struct MainPanel: View {
                     .padding(.bottom, 8)
                 }
                 .frame(maxHeight: 360)
+
+                // Soaks up any leftover room from the panel-wide minHeight
+                // (matched to Settings' height) below a short list, instead
+                // of it collecting as dead space under the whole panel.
+                Spacer(minLength: 0)
             }
         }
         .padding(.top, 4)
         .padding(.bottom, 10)
+        .frame(maxHeight: .infinity)
         // Deliberately NOT animated: MenuBarExtra(.window) auto-sizes its
         // popover to content, and animating a height-affecting change here
         // (ducking banner / app list appearing) makes the window itself
