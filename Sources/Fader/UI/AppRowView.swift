@@ -55,17 +55,17 @@ struct AppRowView: View {
                         .contentTransition(.numericText())
                 }
 
-                // Native-style slider — icon embedded in the track, same as
-                // the system Volume/Brightness sliders. Muting stays on the
-                // app icon (tap) and context menu; the icon here is just
-                // the native visual language, not a separate tap target.
+                // Native-style slider — quiet/loud icons flank the track,
+                // same as the system volume control. Muting stays on the
+                // app icon (tap) and context menu, not these icons.
                 FluidSlider(
                     value: Binding(
                         get: { Double(app.volume) },
                         set: { engine.applyGain(Float($0), to: app.id) }
                     ),
-                    height: 26,
-                    icon: app.isMuted ? "speaker.slash.fill" : muteGlyph,
+                    height: 22,
+                    minIcon: app.isMuted ? "speaker.slash.fill" : "speaker.fill",
+                    maxIcon: "speaker.wave.3.fill",
                     levelMeter: app.isActive ? Double(app.levelMeter) : 0
                 )
                 .disabled(!app.supportsVolumeControl)
@@ -146,19 +146,10 @@ struct AppRowView: View {
         return app.isMuted ? "Unmute \(app.displayName)" : "Mute \(app.displayName)"
     }
 
-    // Icon and label both reflect the app's OWN slider setting (0...100%,
-    // relative — see AudioState.effectiveVolume), not the system-scaled
-    // effective output. Otherwise dragging a slider to max wouldn't read
-    // "100%" whenever the system volume itself is below 100%.
-    private var muteGlyph: String {
-        switch app.volume {
-        case 0:        return "speaker.fill"
-        case ..<0.34:  return "speaker.wave.1.fill"
-        case ..<0.67:  return "speaker.wave.2.fill"
-        default:       return "speaker.wave.3.fill"
-        }
-    }
-
+    // Label reflects the app's OWN slider setting (0...100%, relative —
+    // see AudioState.effectiveVolume), not the system-scaled effective
+    // output. Otherwise dragging a slider to max wouldn't read "100%"
+    // whenever the system volume itself is below 100%.
     private var volumeText: String {
         if !app.supportsVolumeControl { return "—" }
         if app.isMuted { return "Muted" }
