@@ -159,9 +159,12 @@ struct AppRowView: View {
         return app.isMuted ? "Unmute \(app.displayName)" : "Mute \(app.displayName)"
     }
 
+    // Icon and label both reflect the app's OWN slider setting (0...100%,
+    // relative — see AudioState.effectiveVolume), not the system-scaled
+    // effective output. Otherwise dragging a slider to max wouldn't read
+    // "100%" whenever the system volume itself is below 100%.
     private var muteGlyph: String {
-        let eff = state.effectiveVolume(for: app)
-        switch eff {
+        switch app.volume {
         case 0:        return "speaker.fill"
         case ..<0.34:  return "speaker.wave.1.fill"
         case ..<0.67:  return "speaker.wave.2.fill"
@@ -172,8 +175,7 @@ struct AppRowView: View {
     private var volumeText: String {
         if !app.supportsVolumeControl { return "—" }
         if app.isMuted { return "Muted" }
-        let eff = state.effectiveVolume(for: app)
-        let pct = Int(eff * 100)
+        let pct = Int(app.volume * 100)
         if state.duckingEnabled, state.isAnyCommunicationActive, app.category != .communication {
             return "\(pct)%↓"
         }
