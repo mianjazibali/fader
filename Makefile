@@ -17,7 +17,10 @@ else
 SWIFT := swift
 endif
 
-.PHONY: build bundle sign run debug clean
+DMG := build/$(APP_NAME).dmg
+DMG_STAGING := build/dmg-staging
+
+.PHONY: build bundle sign run debug dmg clean
 
 build:
 	$(SWIFT) build -c $(CONFIG)
@@ -63,6 +66,15 @@ debug:
 	@$(MAKE) bundle CONFIG=debug
 	@$(MAKE) sign CONFIG=debug
 	open $(APP_BUNDLE)
+
+dmg: sign
+	@rm -rf $(DMG_STAGING) $(DMG)
+	@mkdir -p $(DMG_STAGING)
+	cp -R $(APP_BUNDLE) $(DMG_STAGING)/
+	@ln -s /Applications $(DMG_STAGING)/Applications
+	hdiutil create -volname "$(APP_NAME)" -srcfolder $(DMG_STAGING) -ov -format UDZO $(DMG)
+	@rm -rf $(DMG_STAGING)
+	@echo "Created $(DMG)"
 
 clean:
 	rm -rf $(BUILD_DIR) build
