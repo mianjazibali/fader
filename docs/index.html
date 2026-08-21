@@ -837,25 +837,22 @@
     })();
   }
   function scheduleChromeLoop() {
-    // Deliberately NOT a melody like Spotify's — a sparse, irregular,
-    // bright square-wave "notification ping" pattern (short percussive
-    // blips, uneven gaps, an octave-plus higher) so the two are easy to
-    // tell apart by ear even layered together, not just by pitch.
+    // A complementary counter-melody, not a rival one: same key as
+    // Spotify (C major) but an octave up, a softer bell-like triangle
+    // wave instead of sine, on a slower beat that's offset to land in
+    // the gaps between Spotify's notes. The two interlock like two
+    // instruments in the same song, rather than clashing or blurring
+    // into one indistinguishable layer.
     if (loopRunning.chrome) return;
     loopRunning.chrome = true;
-    const pattern = [
-      { freq: 1046.5, dur: 0.05, gap: 140 },
-      { freq: 1318.5, dur: 0.05, gap: 900 },
-      { freq: 1046.5, dur: 0.05, gap: 140 },
-      { freq: 1567.98, dur: 0.07, gap: 1500 },
-    ];
+    const notes = [523.25, 783.99, 659.25, 523.25]; // C5 G5 E5 C5
     let i = 0;
-    (function tick() {
+    function tick() {
       if (!audioOn) { loopRunning.chrome = false; return; }
-      const step = pattern[i++ % pattern.length];
-      playNote(getAppGain('chrome'), step.freq, 'square', audioCtx.currentTime, step.dur, 0.7);
-      setTimeout(tick, step.gap);
-    })();
+      playNote(getAppGain('chrome'), notes[i++ % notes.length], 'triangle', audioCtx.currentTime, 0.4, 0.85);
+      setTimeout(tick, 600);
+    }
+    setTimeout(tick, 150); // offset from Spotify's beat so notes land between, not on top
   }
   function scheduleZoomLoop() {
     if (loopRunning.zoom) return;
