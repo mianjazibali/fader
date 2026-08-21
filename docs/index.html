@@ -9,18 +9,18 @@
 <!-- Open Graph -->
 <meta property="og:title" content="SonicFlow — Per-app volume for macOS">
 <meta property="og:description" content="Free, open-source per-app volume control for macOS. Music, Zoom, Chrome, anything — independent sliders + auto-ducking. Under 1% CPU.">
-<meta property="og:url" content="https://altuzar.github.io/sonicflow/">
-<meta property="og:image" content="https://altuzar.github.io/sonicflow/og-card.png?v=2">
-<meta property="og:image:secure_url" content="https://altuzar.github.io/sonicflow/og-card.png?v=2">
+<meta property="og:url" content="https://mianjazibali.github.io/sonicflow/">
+<meta property="og:image" content="https://mianjazibali.github.io/sonicflow/og-card.png?v=2">
+<meta property="og:image:secure_url" content="https://mianjazibali.github.io/sonicflow/og-card.png?v=2">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="SonicFlow app preview">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://altuzar.github.io/sonicflow/og-card.png?v=2">
+<meta name="twitter:image" content="https://mianjazibali.github.io/sonicflow/og-card.png?v=2">
 
-<link rel="icon" type="image/png" href="https://altuzar.github.io/sonicflow/favicon.png">
+<link rel="icon" type="image/png" href="https://mianjazibali.github.io/sonicflow/favicon.png">
 
 <style>
   :root {
@@ -409,6 +409,37 @@
   footer .links { display: flex; gap: 24px; font-size: 14px; }
   footer .copyright { font-size: 13px; color: var(--muted-2); }
 
+  /* Fork banner */
+  .fork-banner {
+    background: linear-gradient(90deg, rgba(31,224,255,0.12), rgba(122,31,255,0.12));
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+    font-size: 13.5px;
+    padding: 10px 16px;
+    color: var(--mist);
+  }
+  .fork-banner a { color: var(--cyan); text-decoration: none; font-weight: 600; }
+  .fork-banner a:hover { text-decoration: underline; }
+
+  .btn-coffee {
+    background: #FFDD00;
+    color: #0B0F1F;
+  }
+  .btn-coffee:hover { transform: translateY(-2px); }
+
+  .gatekeeper-note {
+    margin-top: 18px;
+    background: rgba(255,159,10,0.10);
+    border: 1px solid rgba(255,159,10,0.25);
+    border-radius: 12px;
+    padding: 16px 18px;
+    font-family: -apple-system, sans-serif;
+    font-size: 14px;
+    color: var(--mist);
+    line-height: 1.6;
+  }
+  .gatekeeper-note strong { color: var(--warning); }
+
   /* Mobile */
   @media (max-width: 880px) {
     .hero { grid-template-columns: 1fr; padding: 80px 0 40px; gap: 50px; }
@@ -420,6 +451,11 @@
 </style>
 </head>
 <body>
+
+<div class="fork-banner">
+  This is a community fork of SonicFlow with a few bug fixes on top &nbsp;·&nbsp;
+  All credit to the original project: <a href="https://github.com/altuzar/sonicflow" target="_blank" rel="noopener">altuzar/sonicflow ↗</a>
+</div>
 
 <nav>
   <div class="container inner">
@@ -439,16 +475,20 @@
       <li><a href="#features">Features</a></li>
       <li><a href="#how">How it works</a></li>
       <li><a href="#install">Install</a></li>
+      <li><a href="#fixes">What's fixed</a></li>
       <li><a href="#faq">FAQ</a></li>
-      <li><a href="https://github.com/altuzar/sonicflow">GitHub</a></li>
+      <li><a href="https://github.com/mianjazibali/sonicflow">GitHub</a></li>
     </ul>
-    <a class="cta" href="#install">Download free</a>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <a class="btn btn-coffee" style="padding:9px 16px; border-radius:10px; font-size:14px;" href="https://buymeacoffee.com/mianjazibali" target="_blank" rel="noopener">☕ Buy us a coffee</a>
+      <a class="cta" href="#install">Download free</a>
+    </div>
   </div>
 </nav>
 
 <header class="hero container">
   <div>
-    <div class="eyebrow"><span class="dot"></span> Now live · v0.1 · macOS 14.2+</div>
+    <div class="eyebrow"><span class="dot"></span> Now live · v0.1.1 (fixed fork) · macOS 14.2+</div>
     <h1>Per-app volume<br>for macOS.<br><span class="accent">Finally.</span></h1>
     <p class="lede">
       Independent volume sliders for <strong>every app producing audio</strong>.
@@ -456,8 +496,8 @@
       Auto-ducks media when someone speaks on a call.
     </p>
     <div class="cta-row">
-      <a class="btn btn-primary" href="#install">⬇ Download v0.1</a>
-      <a class="btn btn-secondary" href="https://github.com/altuzar/sonicflow">View on GitHub →</a>
+      <a class="btn btn-primary" href="#install">⬇ Download v0.1.1</a>
+      <a class="btn btn-secondary" href="https://github.com/mianjazibali/sonicflow">View on GitHub →</a>
     </div>
     <p class="meta-line">Free · MIT licensed · <code>&lt; 1%</code> CPU · No telemetry</p>
   </div>
@@ -593,16 +633,45 @@
   <div class="install-block">
 <span class="comment"># Option A — download the .app bundle</span>
 <span class="prompt">$</span> curl -L -o SonicFlow.zip \
-    https://github.com/altuzar/sonicflow/releases/latest/download/SonicFlow.zip
+    https://github.com/mianjazibali/sonicflow/releases/latest/download/SonicFlow.zip
 <span class="prompt">$</span> unzip SonicFlow.zip
 <span class="prompt">$</span> mv SonicFlow.app /Applications/
 <span class="prompt">$</span> open /Applications/SonicFlow.app
 
 <span class="comment"># Option B — build from source</span>
-<span class="prompt">$</span> git clone https://github.com/altuzar/sonicflow.git
+<span class="prompt">$</span> git clone https://github.com/mianjazibali/sonicflow.git
 <span class="prompt">$</span> cd sonicflow
 <span class="prompt">$</span> make sign
 <span class="prompt">$</span> open build/SonicFlow.app
+  </div>
+  <div class="gatekeeper-note">
+    <strong>⚠ First launch needs one extra step.</strong> This build is signed ad-hoc, not with a paid
+    Apple Developer ID, so Gatekeeper will refuse to open it with a plain double-click. In Finder,
+    <strong>right-click SonicFlow.app → Open</strong>, then confirm in the dialog that appears. You only
+    need to do this once.
+  </div>
+  <p style="margin-top:22px;"><a class="btn btn-primary" href="https://github.com/mianjazibali/sonicflow/releases/latest" target="_blank" rel="noopener">⬇ Download latest release →</a></p>
+</section>
+
+<section id="fixes" class="container">
+  <h2>What's fixed in <span class="accent">this fork</span></h2>
+  <p class="section-sub">Three real playback bugs found and fixed on top of the original v0.1 codebase. All credit for the app itself goes to <a href="https://github.com/altuzar/sonicflow" style="color:var(--cyan)">altuzar/sonicflow</a>.</p>
+  <div class="features">
+    <div class="feature">
+      <span class="emoji">🔈</span>
+      <h3>Mono output no longer scrambles audio</h3>
+      <p>On a mono output device (e.g. a Bluetooth headset switched to call mode) the mixer used to interleave L/R samples into consecutive mono slots — scrambled, muffled sound. Now it properly down/up-mixes to the real device's channel count.</p>
+    </div>
+    <div class="feature">
+      <span class="emoji">🔌</span>
+      <h3>Survives output device changes</h3>
+      <p>Switching outputs — plugging in headphones, connecting/disconnecting Bluetooth — used to leave audio silently undelivered until you restarted the app. The pipeline now rebuilds itself automatically when the default output device changes.</p>
+    </div>
+    <div class="feature">
+      <span class="emoji">📞</span>
+      <h3>Live calls stay audible</h3>
+      <p>macOS silently zeroes Process Tap content for real call audio (WhatsApp, FaceTime, etc.) — a privacy protection, not a bug we can route around. Tapping a call app was strictly worse than doing nothing, so SonicFlow now leaves call apps' audio untouched instead of muting them into silence.</p>
+    </div>
   </div>
 </section>
 
@@ -619,7 +688,7 @@
     </details>
     <details>
       <summary>Does it work with Bluetooth headphones / AirPods?</summary>
-      <p>Yes. The playback IOProc binds to whatever your current default output device is. Headphone hot-swap support is on the roadmap — for now, restart the app after changing output.</p>
+      <p>Yes. The playback IOProc binds to whatever your current default output device is, and this fork rebuilds the pipeline automatically when that device changes — connect, disconnect, or switch outputs freely without restarting the app.</p>
     </details>
     <details>
       <summary>What about audio quality?</summary>
@@ -635,7 +704,7 @@
     </details>
     <details>
       <summary>Where's the code?</summary>
-      <p>All ~2,400 lines of Swift live at <a href="https://github.com/altuzar/sonicflow">github.com/altuzar/sonicflow</a>. MIT licensed. Read it, fork it, ship PRs.</p>
+      <p>This fork lives at <a href="https://github.com/mianjazibali/sonicflow">github.com/mianjazibali/sonicflow</a>. The original project is at <a href="https://github.com/altuzar/sonicflow">github.com/altuzar/sonicflow</a>. MIT licensed either way. Read it, fork it, ship PRs.</p>
     </details>
   </div>
 </section>
@@ -655,12 +724,13 @@
       <span class="brand-text">SonicFlow</span>
     </div>
     <div class="links">
-      <a href="https://github.com/altuzar/sonicflow">GitHub</a>
-      <a href="https://github.com/altuzar/sonicflow/blob/main/ROADMAP.md">Roadmap</a>
-      <a href="https://github.com/altuzar/sonicflow/issues">Issues</a>
-      <a href="https://github.com/altuzar/sonicflow/blob/main/LICENSE">License</a>
+      <a href="https://github.com/mianjazibali/sonicflow">GitHub (this fork)</a>
+      <a href="https://github.com/altuzar/sonicflow">Original project</a>
+      <a href="https://github.com/mianjazibali/sonicflow/issues">Issues</a>
+      <a href="https://github.com/mianjazibali/sonicflow/blob/main/LICENSE">License</a>
+      <a href="https://buymeacoffee.com/mianjazibali" target="_blank" rel="noopener">☕ Buy us a coffee</a>
     </div>
-    <div class="copyright">MIT · Made with audio waveforms · 2026</div>
+    <div class="copyright">MIT · Fork maintained by mianjazibali · Original by altuzar · 2026</div>
   </div>
 </footer>
 
