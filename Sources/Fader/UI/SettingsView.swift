@@ -45,7 +45,9 @@ struct SettingsView: View {
                     .padding(.top, 4)
                 }
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+            .padding(.bottom, 16)
         }
         // Matches MainPanel's ScrollView cap (360) — an unconstrained
         // ScrollView leaves its ideal height ambiguous/unbounded, which is

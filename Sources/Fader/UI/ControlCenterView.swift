@@ -8,21 +8,18 @@ struct ControlCenterView: View {
     var body: some View {
         @Bindable var state = engine.state
 
-        // FooterView/HeaderView are both top-level (shared, not nested
-        // inside MainPanel) so their padding/position stays identical
-        // whenever they DO show on both screens. The settings screen hides
-        // most of their content (see below) to stay simple/uncluttered,
-        // but what remains (the divider layout, the back button's slot)
-        // still lines up the same way, not two independently-built strips.
+        // The top strip (FooterView) is the app's one persistent nav bar —
+        // it always shows, carrying the settings toggle + quit button, so
+        // it stays put as the anchor point on both screens. The brand
+        // block (HeaderView) is main-screen-only content, so it — and its
+        // divider — only appear there.
         VStack(spacing: 0) {
-            if !showSettings {
-                FooterView(engine: engine)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 14)
-                    .padding(.bottom, 10)
+            FooterView(engine: engine, showSettings: $showSettings)
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 10)
 
-                Divider().opacity(0.3)
-            }
+            Divider().opacity(0.3)
 
             if showSettings {
                 SettingsView(state: state)
@@ -32,19 +29,24 @@ struct ControlCenterView: View {
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
 
-            Divider().opacity(0.25)
+            if !showSettings {
+                Divider().opacity(0.25)
 
-            HeaderView(state: state, showSettings: $showSettings)
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
-                .padding(.bottom, 14)
+                HeaderView(state: state)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    .padding(.bottom, 14)
+            }
         }
         .frame(width: 340)
-        // No minHeight: it was sized for the old, taller empty state (big
-        // icon + more padding). Now that the empty state is intentionally
-        // compact, a fixed floor just forces an awkward blank gap to fill
-        // the difference. The panel sizes to its actual content instead —
-        // MenuBarExtra(.window) already auto-sizes, so nothing is lost.
+        // minHeight is scoped to Settings only, not global: Settings'
+        // measured natural content height is ~346pt (its two sections vs.
+        // Main's single-row-height app list), so without a floor the panel
+        // visibly shrinks then grows again when switching screens. A
+        // *global* floor was tried before and reverted — it forced an
+        // awkward blank gap under the (intentionally compact) empty state
+        // on Main, which has no such tall content to fill it.
+        .frame(minHeight: showSettings ? 350 : nil)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         // Not animated, same reason as MainPanel below: MainPanel and
         // SettingsView have different natural heights, and animating that
@@ -94,12 +96,14 @@ private struct MainPanel: View {
                         }
                     }
                     .padding(.horizontal, 8)
-                    .padding(.vertical, 8)
+                    .padding(.top, 4)
+                    .padding(.bottom, 8)
                 }
                 .frame(maxHeight: 360)
             }
         }
-        .padding(.vertical, 10)
+        .padding(.top, 4)
+        .padding(.bottom, 10)
         // Deliberately NOT animated: MenuBarExtra(.window) auto-sizes its
         // popover to content, and animating a height-affecting change here
         // (ducking banner / app list appearing) makes the window itself
@@ -139,67 +143,39 @@ private struct EmptyStateView: View {
 
 private struct HeaderView: View {
     @Bindable var state: AudioState
-    @Binding var showSettings: Bool
 
     var body: some View {
         HStack(spacing: 12) {
-            if showSettings {
-                // Simple/uncluttered on the settings screen — no need to
-                // repeat the brand mark or "no audio playing" status here.
-                Text("Settings")
+            // Brand gradient mini-icon with the same mark as the app icon.
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Brand.gradient)
+                    .frame(width: 30, height: 30)
+                    .shadow(color: Brand.orange.opacity(0.30), radius: 6, y: 2)
+
+                Image(systemName: "slider.vertical.3")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Fader")
                     .font(.system(size: 15, weight: .bold))
                     .tracking(-0.2)
-            } else {
-                // Brand gradient mini-icon with the same mark as the app icon.
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Brand.gradient)
-                        .frame(width: 30, height: 30)
-                        .shadow(color: Brand.orange.opacity(0.30), radius: 6, y: 2)
-
-                    Image(systemName: "slider.vertical.3")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Fader")
-                        .font(.system(size: 15, weight: .bold))
-                        .tracking(-0.2)
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(state.apps.contains(where: { $0.isActive }) ? .green : .secondary.opacity(0.4))
-                            .frame(width: 5, height: 5)
-                        Text(statusText)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .contentTransition(.opacity)
-                    }
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(state.apps.contains(where: { $0.isActive }) ? .green : .secondary.opacity(0.4))
+                        .frame(width: 5, height: 5)
+                    Text(statusText)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .contentTransition(.opacity)
                 }
             }
 
             Spacer()
-
-            Button {
-                // Not wrapped in withAnimation — see the note on
-                // ControlCenterView's body: animating this swap fights the
-                // auto-sizing popover window's own resize.
-                showSettings.toggle()
-            } label: {
-                Image(systemName: showSettings ? "chevron.left" : "gearshape.fill")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 26, height: 26)
-                    .background(
-                        Circle().fill(.quaternary)
-                            .overlay(Circle().stroke(Color.primary.opacity(0.08), lineWidth: 0.5))
-                    )
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .buttonStyle(.plain)
-            .help(showSettings ? "Back" : "Settings")
         }
     }
 
@@ -239,21 +215,29 @@ private struct AutoLowerBanner: View {
 
 private struct FooterView: View {
     let engine: any AudioEngine
+    @Binding var showSettings: Bool
 
     var body: some View {
         // Every element gets the same 22pt-tall slot to center within —
-        // without it, the 10pt label and the 12-13pt icons don't share a
+        // without it, the label and the 12-13pt icons don't share a
         // common vertical anchor and visibly drift out of alignment.
         HStack(alignment: .center, spacing: 8) {
-            Text(footerLabel)
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
-                .frame(height: 22)
+            if showSettings {
+                Text("Settings")
+                    .font(.system(size: 15, weight: .bold))
+                    .tracking(-0.2)
+                    .frame(height: 22, alignment: .leading)
+            } else {
+                Text(footerLabel)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                    .frame(height: 22, alignment: .leading)
+            }
 
             Spacer()
 
             // Mock-only demo: flip "is playing" on each app.
-            if let mock = engine as? MockAudioEngine {
+            if let mock = engine as? MockAudioEngine, !showSettings {
                 Menu {
                     ForEach(mock.state.apps) { app in
                         Button("\(app.isActive ? "Stop" : "Start") \(app.displayName)") {
@@ -268,6 +252,23 @@ private struct FooterView: View {
                 .frame(width: 22, height: 22)
                 .help("Toggle which apps are 'playing audio'")
             }
+
+            // Settings toggle — same plain, no-background style as the
+            // power button next to it, per the user's explicit request.
+            Button {
+                // Not wrapped in withAnimation — see the note on
+                // ControlCenterView's body: animating this swap fights the
+                // auto-sizing popover window's own resize.
+                showSettings.toggle()
+            } label: {
+                Image(systemName: showSettings ? "chevron.left" : "gearshape.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22, height: 22)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .buttonStyle(.plain)
+            .help(showSettings ? "Back" : "Settings")
 
             Button {
                 NSApp.terminate(nil)
