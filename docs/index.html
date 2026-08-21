@@ -136,18 +136,19 @@
     margin-top: 22px; color: var(--muted); font-size: 14px;
   }
 
-  /* Live demo, right column of the hero */
+  /* Live demo, right column of the hero — top edge lines up with the
+     kicker on the left since both are the first thing in their column. */
   .hero-demo { }
   .demo-label {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
     font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
-    color: var(--muted); margin-bottom: 18px;
+    color: var(--muted); margin-top: 16px;
   }
   .demo-label .rec {
     width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
   }
   .demo-frame {
-    padding: 22px 0;
+    padding: 0;
     display: flex; justify-content: center;
   }
 
@@ -458,7 +459,6 @@
     </div>
 
     <div class="hero-demo" id="demo">
-      <p class="demo-label"><span class="rec"></span> Live demo — the real UI, running right here</p>
       <div class="demo-frame">
         <!-- Live, working demo — not a screenshot. Try it. -->
         <div class="panel-mock">
@@ -493,6 +493,7 @@
           </div>
         </div>
       </div>
+      <p class="demo-label"><span class="rec"></span> Live Demo</p>
     </div>
   </div>
 </header>
