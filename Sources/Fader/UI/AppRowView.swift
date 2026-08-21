@@ -197,7 +197,7 @@ struct AppRowView: View {
         if app.isMuted { return .red.opacity(0.55) }
         switch app.category {
         case .communication: return .orange
-        case .media:         return Color(red: 0.12, green: 0.30, blue: 1.0)   // vivid SonicFlow blue
+        case .media:         return Color(red: 0.12, green: 0.30, blue: 1.0)   // vivid media blue
         case .browser:       return Color(red: 0.20, green: 0.50, blue: 1.0)
         case .game:          return Color(red: 0.50, green: 0.20, blue: 1.0)
         case .other:         return .accentColor

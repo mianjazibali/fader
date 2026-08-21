@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct SonicFlowApp: App {
+struct FaderApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     /// Engine selection:

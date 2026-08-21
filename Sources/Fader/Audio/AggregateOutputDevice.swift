@@ -92,7 +92,7 @@ final class AggregateOutputDevice {
         // Build a private aggregate. We DO include the user's output device
         // as a sub-device — gives us a stable clock source matching the
         // playback device's sample rate.
-        let aggregateUID = "com.sonicflow.aggregate.\(UUID().uuidString)"
+        let aggregateUID = "com.fader.aggregate.\(UUID().uuidString)"
         var tapList: [[String: Any]] = []
         for tap in taps {
             if let uid = Self.tapUID(for: tap.tapID) {
@@ -102,7 +102,7 @@ final class AggregateOutputDevice {
 
         let description: [String: Any] = [
             kAudioAggregateDeviceUIDKey: aggregateUID,
-            kAudioAggregateDeviceNameKey: "SonicFlow Capture",
+            kAudioAggregateDeviceNameKey: "Fader Capture",
             kAudioAggregateDeviceIsPrivateKey: 1,
             kAudioAggregateDeviceIsStackedKey: 0,
             kAudioAggregateDeviceMainSubDeviceKey: outputDeviceUID,

@@ -178,7 +178,7 @@ private struct HeaderView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("SonicFlow")
+                Text("Fader")
                     .font(.system(size: 15, weight: .bold))
                     .tracking(-0.2)
                 HStack(spacing: 4) {
@@ -283,7 +283,7 @@ private struct FooterView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .help("Quit SonicFlow")
+            .help("Quit Fader")
         }
     }
 

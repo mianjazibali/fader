@@ -10,7 +10,7 @@ import CoreAudio
 ///  2. The CURRENT default device's volume may change.
 /// We re-attach the volume listener whenever the device changes.
 final class SystemVolumeListener: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "com.sonicflow.volume-listener", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.fader.volume-listener", qos: .userInitiated)
     private let onChange: @Sendable (Float) -> Void
 
     private var defaultDeviceListener: ListenerHandle?

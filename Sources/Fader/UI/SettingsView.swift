@@ -43,13 +43,13 @@ struct SettingsView: View {
                 }
 
                 section(title: "About", icon: "sparkles") {
-                    InfoLine(label: "Version", value: "0.1.0")
+                    InfoLine(label: "Version", value: "0.2.0")
                     InfoLine(label: "Engine", value: "CoreAudio Process Taps")
                     InfoLine(label: "CPU target", value: "< 1%")
                     InfoLine(label: "License", value: "MIT · Free + open source")
 
                     HStack(spacing: 8) {
-                        Link(destination: URL(string: "https://github.com/altuzar/sonicflow")!) {
+                        Link(destination: URL(string: "https://github.com/mianjazibali/fader")!) {
                             HStack(spacing: 4) {
                                 Image(systemName: "chevron.left.forwardslash.chevron.right")
                                     .font(.system(size: 10, weight: .semibold))
@@ -58,7 +58,7 @@ struct SettingsView: View {
                             }
                             .foregroundStyle(.tint)
                         }
-                        Link(destination: URL(string: "https://github.com/altuzar/sonicflow/issues")!) {
+                        Link(destination: URL(string: "https://github.com/mianjazibali/fader/issues")!) {
                             HStack(spacing: 4) {
                                 Image(systemName: "ladybug")
                                     .font(.system(size: 10, weight: .semibold))

@@ -24,7 +24,7 @@ final class ProcessTap {
 
         // Swift's NS_REFINED_FOR_SWIFT gives us [AudioObjectID] instead of [NSNumber].
         let description = CATapDescription(stereoMixdownOfProcesses: [processObjectID])
-        description.name = "SonicFlow.\(bundleID)"
+        description.name = "Fader.\(bundleID)"
         description.isPrivate = true
         // The property's `getter=isMuted` confuses Swift's case folding;
         // raw value 2 = CATapMutedWhenTapped (audio routes to tap, original

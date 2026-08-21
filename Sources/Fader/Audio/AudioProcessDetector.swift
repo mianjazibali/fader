@@ -25,7 +25,7 @@ struct AudioProcess: Equatable, Sendable {
 /// Thread model: all mutable state lives on `queue` (a private serial queue).
 /// The callback fires on the main queue. Hence `@unchecked Sendable`.
 final class AudioProcessDetector: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "com.sonicflow.audio-detector", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.fader.audio-detector", qos: .userInitiated)
     private let onChange: @Sendable ([AudioProcess]) -> Void
 
     /// Listener on the system object for process-list mutations.
@@ -250,6 +250,6 @@ final class AudioProcessDetector: @unchecked Sendable {
         "com.logi.cp-dev-mgr",
         "com.logitech",
         "systemsoundserverd",
-        "com.sonicflow.app" // we don't need to control ourselves
+        "com.fader.app" // we don't need to control ourselves
     ]
 }

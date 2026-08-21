@@ -105,7 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // user gets the window when they meant to drag the slider. Drag from
         // the visible title-bar traffic-light area instead.
         window.isMovableByWindowBackground = false
-        window.title = "SonicFlow"
+        window.title = "Fader"
         window.isReleasedWhenClosed = false
         window.backgroundColor = .clear
         window.center()

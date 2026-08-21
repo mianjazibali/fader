@@ -41,7 +41,7 @@ final class AudioGainController {
     /// device that just disappeared and audio silently stops flowing.
     private var lastActiveApps: [AudioApp] = []
     private var lastProcessIDByBundle: [String: AudioObjectID] = [:]
-    private let deviceChangeQueue = DispatchQueue(label: "com.sonicflow.gain-controller.device-change")
+    private let deviceChangeQueue = DispatchQueue(label: "com.fader.gain-controller.device-change")
     private var deviceChangeListener: ListenerHandle?
 
     init() {

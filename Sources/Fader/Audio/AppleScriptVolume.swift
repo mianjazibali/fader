@@ -29,7 +29,7 @@ enum AppleScriptVolume {
 
     /// Probe an app's AppleScript reachability without changing anything.
     /// If this returns false, the user hasn't granted Automation permission
-    /// (System Settings → Privacy & Security → Automation → SonicFlow).
+    /// (System Settings → Privacy & Security → Automation → Fader).
     /// Probing also TRIGGERS the permission dialog the first time.
     static func probe(bundleID: String) -> Bool {
         guard let appName = scriptableByBundle[bundleID] else { return false }
@@ -128,7 +128,7 @@ enum AppleScriptVolume {
             let summary = "AppleScript error \(code): \(msg)"
             Self.lastError = summary
             FileHandle.standardError.write(Data("[AppleScriptVolume] \(summary)\n".utf8))
-            FileHandle.standardError.write(Data("[AppleScriptVolume] → grant via System Settings → Privacy & Security → Automation → SonicFlow → enable target app\n".utf8))
+            FileHandle.standardError.write(Data("[AppleScriptVolume] → grant via System Settings → Privacy & Security → Automation → Fader → enable target app\n".utf8))
         } else {
             Self.lastError = nil
         }
@@ -140,7 +140,7 @@ enum AppleScriptVolume {
 }
 
 /// System (master) volume control. Drives the default output device's
-/// hardware volume property. Affects ALL audio, not just SonicFlow's clients.
+/// hardware volume property. Affects ALL audio, not just Fader's clients.
 enum SystemVolume {
     /// Set system volume 0...1. Returns true on success.
     @discardableResult

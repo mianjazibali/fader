@@ -1,13 +1,13 @@
-# SonicFlow — build the SwiftPM executable, wrap in a .app bundle, ad-hoc sign, run.
+# Fader — build the SwiftPM executable, wrap in a .app bundle, ad-hoc sign, run.
 
-APP_NAME := SonicFlow
-BUNDLE_ID := com.sonicflow.app
+APP_NAME := Fader
+BUNDLE_ID := com.fader.app
 CONFIG := release
 BUILD_DIR := .build
 APP_BUNDLE := build/$(APP_NAME).app
 EXECUTABLE := $(BUILD_DIR)/$(CONFIG)/$(APP_NAME)
-INFO_PLIST := Sources/SonicFlow/Resources/Info.plist
-ENTITLEMENTS := Sources/SonicFlow/Resources/SonicFlow.entitlements
+INFO_PLIST := Sources/Fader/Resources/Info.plist
+ENTITLEMENTS := Sources/Fader/Resources/Fader.entitlements
 
 # Use Xcode's Swift toolchain (full SDK + frameworks) when available.
 XCODE_DEV := $(shell xcode-select -p 2>/dev/null)

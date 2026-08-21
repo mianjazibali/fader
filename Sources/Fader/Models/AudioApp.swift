@@ -11,7 +11,7 @@ enum AppCategory: String, Codable, Sendable {
     case other
 }
 
-/// One audio-producing application as known to SonicFlow.
+/// One audio-producing application as known to Fader.
 /// Identified by bundle ID; PIDs are unstable (apps relaunch).
 ///
 /// Not Sendable because `NSImage` isn't. The whole graph is owned by the
@@ -27,7 +27,7 @@ struct AudioApp: Identifiable, Equatable {
     var isActive: Bool          // currently producing audio
     var levelMeter: Float       // 0.0 ... 1.0, instantaneous output level
 
-    /// True if SonicFlow can actually control this app's volume right now.
+    /// True if Fader can actually control this app's volume right now.
     /// False means the slider/mute should be disabled with an explanatory
     /// indicator (Phase 3 routing is the proper fix; until then we're honest
     /// about which apps we can drive).
