@@ -564,8 +564,8 @@
     </div>
     <div class="feature">
       <span class="emoji">🎤</span>
-      <h3>No purple mic dot</h3>
-      <p>Fader never requests microphone permission. Process Taps capture output, not input.</p>
+      <h3>No mic access, ever</h3>
+      <p>Fader never requests microphone permission — Process Taps capture app output, not input. You'll still see macOS's purple system-audio indicator while it's running; that's expected for any output-capture app.</p>
     </div>
     <div class="feature">
       <span class="emoji">📖</span>
@@ -663,7 +663,7 @@
   <div class="faq">
     <details open>
       <summary>Does it trigger the macOS recording indicator?</summary>
-      <p>No purple dot — that's microphone access, which Fader never requests. Process Taps are output-capture, not input. On macOS 14.4+ you may briefly see the orange audio-capture indicator, same as SoundSource / Audio Hijack.</p>
+      <p>Yes, the purple one — that's macOS's system-audio/screen-recording indicator, and Process Taps fall under that category, same as SoundSource or Audio Hijack. It never triggers the orange microphone dot, since Process Taps capture app output, not input.</p>
     </details>
     <details>
       <summary>Why isn't this just built into macOS?</summary>
