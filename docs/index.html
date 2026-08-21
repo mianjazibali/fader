@@ -376,8 +376,11 @@
   .amount-btn:hover { border-color: var(--accent); }
   .amount-btn.selected { background: var(--accent); border-color: var(--accent); color: var(--ink); }
   .modal-download-status {
-    font-size: 13px; color: var(--success); margin-bottom: 18px;
+    font-size: 13px; color: var(--success); margin-bottom: 8px;
     display: flex; align-items: center; gap: 7px; font-weight: 600;
+  }
+  .modal-note {
+    font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5;
   }
   .modal-actions { display: flex; flex-direction: column; gap: 10px; }
   .btn-support { background: var(--ink); color: var(--paper); justify-content: center; }
@@ -436,6 +439,7 @@
     <a class="btn btn-ghost" href="https://github.com/mianjazibali/fader">View source →</a>
   </div>
   <p class="meta-line">MIT licensed, fully open source · No account · No telemetry</p>
+  <p class="meta-line">First launch: right-click the app → Open (it's ad-hoc signed, not notarized)</p>
 </header>
 
 <section id="demo" class="container demo-section">
@@ -551,6 +555,7 @@
     <div class="modal-download-status">
       <span>✓</span><span>Fader.dmg is downloading…</span>
     </div>
+    <p class="modal-note">First launch: right-click the app in Applications → Open. It's ad-hoc signed, not notarized, so a plain double-click gets blocked once.</p>
     <div class="amount-row">
       <button class="amount-btn" data-amount="3" onclick="selectAmount(3)">€3</button>
       <button class="amount-btn selected" data-amount="5" onclick="selectAmount(5)">€5</button>
