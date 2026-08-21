@@ -2,22 +2,22 @@
 import PackageDescription
 
 let package = Package(
-    name: "SonicFlow",
+    name: "Fader",
     platforms: [
         // 14.2 is the floor for the AudioObjectID-per-process API
         // (kAudioHardwarePropertyProcessObjectList et al.).
         .macOS("14.2")
     ],
     products: [
-        .executable(name: "SonicFlow", targets: ["SonicFlow"])
+        .executable(name: "Fader", targets: ["Fader"])
     ],
     targets: [
         .executableTarget(
-            name: "SonicFlow",
-            path: "Sources/SonicFlow",
+            name: "Fader",
+            path: "Sources/Fader",
             exclude: [
                 "Resources/Info.plist",
-                "Resources/SonicFlow.entitlements"
+                "Resources/Fader.entitlements"
             ],
             linkerSettings: [
                 .linkedFramework("CoreAudio"),
