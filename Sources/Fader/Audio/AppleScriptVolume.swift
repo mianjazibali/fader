@@ -138,17 +138,3 @@ enum AppleScriptVolume {
         Task.detached(priority: .utility) { runSync(source) }
     }
 }
-
-/// System (master) volume control. Drives the default output device's
-/// hardware volume property. Affects ALL audio, not just Fader's clients.
-enum SystemVolume {
-    /// Set system volume 0...1. Returns true on success.
-    @discardableResult
-    static func set(_ value: Float) -> Bool {
-        let level = max(0, min(1, value))
-        let script = "set volume output volume \(Int(level * 100))"
-        var error: NSDictionary?
-        _ = NSAppleScript(source: script)?.executeAndReturnError(&error)
-        return error == nil
-    }
-}

@@ -171,7 +171,7 @@ struct AppRowView: View {
 
     private var volumeText: String {
         if !app.supportsVolumeControl { return "—" }
-        if app.isMuted || state.isMasterMuted { return "Muted" }
+        if app.isMuted { return "Muted" }
         let eff = state.effectiveVolume(for: app)
         let pct = Int(eff * 100)
         if state.duckingEnabled, state.isAnyCommunicationActive, app.category != .communication {

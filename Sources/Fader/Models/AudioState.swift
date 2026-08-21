@@ -6,22 +6,24 @@ import Observation
 @MainActor
 final class AudioState {
     var apps: [AudioApp] = []
-    var masterVolume: Float = 1.0
-    var isMasterMuted: Bool = false
+
+    /// Mirrors the real macOS output volume (synced by `SystemVolumeListener`,
+    /// read-only from the UI's perspective — there is no in-app master
+    /// control, the user drives this via the system volume keys / Control
+    /// Center, same as any other app).
+    var systemVolume: Float = 1.0
 
     var duckingEnabled: Bool = true
     var duckingAmount: Float = 0.5         // % to lower non-comm apps when ducking
     var duckingAttackMs: Double = 120
     var duckingReleaseMs: Double = 600
 
-    /// When true, the master slider also drives the system output volume —
-    /// so users get master control until Phase 3 per-app routing is solid.
-    var masterControlsSystemVolume: Bool = true
-
-    /// The user-perceived volume for an app, after master scaling and ducking.
+    /// The user-perceived volume for an app: its own slider (0...100%,
+    /// relative to the system volume) scaled by the actual system volume,
+    /// then ducking. E.g. system at 50% + app slider at 50% = 25% effective.
     func effectiveVolume(for app: AudioApp) -> Float {
-        guard !isMasterMuted, !app.isMuted else { return 0 }
-        let base = app.volume * masterVolume
+        guard !app.isMuted else { return 0 }
+        let base = app.volume * systemVolume
         if duckingEnabled, isAnyCommunicationActive, app.category != .communication {
             return base * (1.0 - duckingAmount)
         }

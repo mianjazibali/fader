@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Touch-friendly horizontal volume slider with optional embedded level meter.
-/// Drag anywhere on the track. Click-to-jump. Haptic ticks on every 5%.
+/// Drag anywhere on the track. Click-to-jump.
 struct FluidSlider: View {
     @Binding var value: Double          // 0...1
     var height: CGFloat = 24
@@ -9,7 +9,6 @@ struct FluidSlider: View {
     /// Live level meter (0...1). Drawn as a soft glow inside the filled region.
     var levelMeter: Double = 0
 
-    @State private var lastHapticBucket: Int = -1
     @State private var isDragging = false
 
     var body: some View {
@@ -74,18 +73,10 @@ struct FluidSlider: View {
                         let cx = g.location.x - thumbDiameter / 2
                         let frac = max(0, min(1, cx / travel))
                         value = Double(frac)
-                        emitHapticIfNeeded(for: frac)
                     }
                     .onEnded { _ in isDragging = false }
             )
         }
         .frame(height: height)
-    }
-
-    private func emitHapticIfNeeded(for frac: Double) {
-        let bucket = Int(frac * 20)        // every 5%
-        guard bucket != lastHapticBucket else { return }
-        lastHapticBucket = bucket
-        HapticFeedback.tick()
     }
 }

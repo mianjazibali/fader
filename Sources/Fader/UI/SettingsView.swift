@@ -31,17 +31,6 @@ struct SettingsView: View {
                     .opacity(state.duckingEnabled ? 1 : 0.5)
                 }
 
-                section(title: "System integration", icon: "speaker.wave.2.fill") {
-                    Toggle("Master slider drives system volume", isOn: $state.masterControlsSystemVolume)
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .font(.system(size: 13, weight: .medium))
-
-                    Text("Sync the master slider with the macOS output volume so F11/F12 work both ways.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-
                 section(title: "About", icon: "sparkles") {
                     InfoLine(label: "Version", value: "0.2.0")
                     InfoLine(label: "Engine", value: "CoreAudio Process Taps")

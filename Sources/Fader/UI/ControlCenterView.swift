@@ -43,18 +43,12 @@ private struct MainPanel: View {
         let visibleApps = state.apps.filter { $0.isActive }
 
         VStack(spacing: 0) {
-            MasterControlView(state: state)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-
             if state.duckingEnabled && state.isAnyCommunicationActive {
                 DuckingBanner(amount: state.duckingAmount)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
-
-            Divider().opacity(0.25)
 
             if visibleApps.isEmpty {
                 EmptyStateView()
@@ -76,29 +70,22 @@ private struct MainPanel: View {
                 .frame(maxHeight: 360)
             }
 
+            Divider().opacity(0.2)
+
             FooterView(engine: engine)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
         }
+        .padding(.top, 10)
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: state.isAnyCommunicationActive)
         .animation(.spring(response: 0.35, dampingFraction: 0.78), value: visibleApps.map(\.id))
-        // Master/ducking changes affect every app's effective gain — re-push
-        // to the realtime controller whenever any of these change.
-        .onChange(of: state.masterVolume) { _, newValue in
-            engine.resyncAllGains()
-            if state.masterControlsSystemVolume {
-                SystemVolume.set(state.isMasterMuted ? 0 : newValue)
-            }
-        }
-        .onChange(of: state.isMasterMuted) { _, muted in
-            engine.resyncAllGains()
-            if state.masterControlsSystemVolume {
-                SystemVolume.set(muted ? 0 : state.masterVolume)
-            }
-        }
-        .onChange(of: state.duckingEnabled)           { _, _ in engine.resyncAllGains() }
-        .onChange(of: state.duckingAmount)            { _, _ in engine.resyncAllGains() }
-        .onChange(of: state.isAnyCommunicationActive) { _, _ in engine.resyncAllGains() }
+        // System volume changes (F11/F12, Control Center) rescale every
+        // app's effective gain, since per-app volume is relative to it.
+        // Ducking changes need the same re-push.
+        .onChange(of: state.systemVolume)              { _, _ in engine.resyncAllGains() }
+        .onChange(of: state.duckingEnabled)             { _, _ in engine.resyncAllGains() }
+        .onChange(of: state.duckingAmount)              { _, _ in engine.resyncAllGains() }
+        .onChange(of: state.isAnyCommunicationActive)   { _, _ in engine.resyncAllGains() }
     }
 }
 
@@ -188,6 +175,8 @@ private struct HeaderView: View {
                     Text(statusText)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                         .contentTransition(.opacity)
                 }
             }
@@ -214,8 +203,7 @@ private struct HeaderView: View {
 
     private var statusText: String {
         let active = state.apps.filter { $0.isActive }.count
-        if state.isMasterMuted { return "Master muted" }
-        if active == 0         { return "Ready · no audio yet" }
+        if active == 0 { return "No audio playing" }
         return "\(active) app\(active == 1 ? "" : "s") playing"
     }
 }

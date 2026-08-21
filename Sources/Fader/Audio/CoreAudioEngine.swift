@@ -47,14 +47,13 @@ final class CoreAudioEngine: AudioEngine {
         self.detector = det
         det.start()
 
-        // Sync master slider with macOS volume keys.
+        // Track the real system output volume — app-level gain is relative
+        // to this (see AudioState.effectiveVolume).
         let volListener = SystemVolumeListener { [weak self] sysVol in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                // Only update if the values diverge meaningfully — prevents
-                // feedback loops when our own slider write echoes back.
-                if abs(self.state.masterVolume - sysVol) > 0.01 {
-                    self.state.masterVolume = sysVol
+                if abs(self.state.systemVolume - sysVol) > 0.01 {
+                    self.state.systemVolume = sysVol
                 }
             }
         }
