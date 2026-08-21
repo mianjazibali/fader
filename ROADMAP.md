@@ -1,4 +1,4 @@
-# SonicFlow Roadmap
+# Fader Roadmap
 
 Honest list of what's done, what's pending polish, and what's a real
 investment.
@@ -43,6 +43,21 @@ investment.
 - Crash-safe: signal handler restores default output (legacy from when we
   changed it; still installed as cheap safety net)
 
+### Fork fixes (done)
+- **Headphone/Bluetooth hot-swap** — listens for
+  `kAudioHardwarePropertyDefaultOutputDevice` changes and rebuilds the
+  tap/aggregate/playback pipeline automatically; no more restarting the app
+  after switching outputs
+- **Mono output device handling** — the playback IOProc now down/up-mixes
+  the ring buffer's stereo frames to the real device's actual channel count
+  instead of copying raw floats 1:1, fixing scrambled/muffled audio on mono
+  outputs (e.g. Bluetooth in call mode)
+- **Live call audio left untouched** — apps with simultaneous mic input +
+  output (a live call) are skipped for tap creation, since macOS silently
+  zeroes Process Tap content for call audio while `CATapMutedWhenTapped`
+  still mutes the real output — tapping was strictly worse than doing
+  nothing
+
 ### Quality of life
 - `make sign / make run / make debug / make icon` workflow
 - `--debug`, `--preview`, `--preview-live`, `--mock`, `--test-gain-cycle`
@@ -57,7 +72,6 @@ investment.
 | Task | Effort | Value |
 |---|---|---|
 | Real **RMS level meters** from the IOProc, published via a second SPSC ring | low | medium |
-| **Headphone hot-swap** — listen for `kAudioHardwarePropertyDefaultOutputDevice` change, rebind playback IOProc to new device | low | high |
 | **Sample-rate handling** — query device nominal sample rate, resample if tap and output disagree | low-med | medium |
 | **Mute click suppression** — fade gain over 5–10 ms instead of instant 0 (avoids audible click on fast transitions) | low | medium |
 | **Row entry/exit animations** — already partially present, could be smoother | low | low |
@@ -75,7 +89,7 @@ investment.
 | **Auto-launch at login** via `SMAppService.mainApp` | low-med | medium |
 | **Permissions UI** — proper in-app onboarding for AppleScript Automation + System Audio Capture (currently silent failures with log messages) | medium | high |
 | **Multiple output device support** — explicit picker, per-app routing | medium-high | medium |
-| **App allowlist** — let user choose which apps SonicFlow controls (not auto-tap everything) | medium | low-med |
+| **App allowlist** — let user choose which apps Fader controls (not auto-tap everything) | medium | low-med |
 | **Tap re-creation strategy** — current design tears down + rebuilds the entire aggregate when the active set changes. Smoother to add/remove taps in place. | medium | medium |
 | **Crash diagnostics** — symbolicated reports, optional opt-in | medium | low |
 

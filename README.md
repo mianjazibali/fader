@@ -1,14 +1,14 @@
-![SonicFlow — per-app volume for macOS](marketing/brand/lockup-banner.png)
+![Fader — volume mixer for Mac](marketing/brand/lockup-banner.png)
 
-# SonicFlow
+# Fader
 
-> Per-app volume for macOS. Finally.
+> Volume mixer for Mac. Per-app volume, finally.
 
 A free, open-source macOS menu bar app for **per-app volume control**.
 Built in Swift 6 with SwiftUI + CoreAudio Process Taps.
 
-[**Download v0.1**](https://github.com/altuzar/sonicflow/releases/latest) ·
-[**Landing**](https://altuzar.github.io/sonicflow) ·
+[**Download v0.2.0**](https://github.com/mianjazibali/fader/releases/latest) ·
+[**Landing**](https://mianjazibali.github.io/fader) ·
 [**Roadmap**](ROADMAP.md) ·
 [**Marketing kit**](marketing/)
 
@@ -78,7 +78,7 @@ Requires **macOS 14.2+**, **Xcode 16+**, **Swift 6+**.
 
 ```bash
 make sign           # build → wrap in .app → ad-hoc sign
-open build/SonicFlow.app   # launch as menu bar app
+open build/Fader.app   # launch as menu bar app
 ```
 
 For development:
@@ -105,8 +105,8 @@ make icon           # regenerate AppIcon.icns from SVG
 ## Permissions
 
 - **AppleScript Automation** — for compatible apps (Music, Spotify, TV,
-  Podcasts), SonicFlow uses AppleScript to also move the app's own volume
-  slider. macOS will prompt "SonicFlow wants to control X" on first contact.
+  Podcasts), Fader uses AppleScript to also move the app's own volume
+  slider. macOS will prompt "Fader wants to control X" on first contact.
 - **System Audio Capture (TCC)** — process taps may require explicit grant
   on macOS 14.4+ for system audio capture. The privacy string is in
   `Info.plist`.
@@ -117,12 +117,12 @@ make icon           # regenerate AppIcon.icns from SVG
 ## Project layout
 
 ```
-sonicflow-app/
+fader/
 ├── Package.swift                    SwiftPM, macOS 14.2+, Swift 6
 ├── Makefile                         build/sign/bundle helpers
 ├── README.md / CLAUDE.md / ROADMAP.md
 ├── Resources/Icon/                  AppIcon.svg → AppIcon.icns
-├── Sources/SonicFlow/
+├── Sources/Fader/
 │   ├── App/                         @main, AppDelegate, signal cleanup
 │   ├── Models/                      AudioApp, AudioState (@Observable)
 │   ├── Audio/                       Detector, Engine, GainController,
@@ -131,8 +131,8 @@ sonicflow-app/
 │   ├── Services/PermissionsManager  Accessibility hooks (future hotkeys)
 │   ├── UI/                          ControlCenterView, AppRowView,
 │   │                                FluidSlider, SettingsView, …
-│   └── Resources/Info.plist / SonicFlow.entitlements
-└── build/SonicFlow.app              output bundle (832 KB)
+│   └── Resources/Info.plist / Fader.entitlements
+└── build/Fader.app                  output bundle (832 KB)
 ```
 
 ---

@@ -7,7 +7,7 @@ Quick orientation for any future Claude/AI agent picking up this project.
 ## What this is
 
 A macOS menu bar app that does **per-app volume control** via CoreAudio
-Process Taps. The interesting part is `Sources/SonicFlow/Audio/*` — that's
+Process Taps. The interesting part is `Sources/Fader/Audio/*` — that's
 where the real engineering lives.
 
 ---
@@ -16,7 +16,7 @@ where the real engineering lives.
 
 ```bash
 # Always run these from the project root.
-cd /Users/altuzar/tests/macapps/sonicflow-app
+cd /Users/mianjazibali/Documents/sonicflow
 
 # Compile only
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift build -c release
@@ -25,13 +25,13 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift build -c re
 make sign
 
 # Launch as a normal user would
-open build/SonicFlow.app
+open build/Fader.app
 
 # With verbose stats to stderr (HAL snapshots + IOProc frame counters)
-./build/SonicFlow.app/Contents/MacOS/SonicFlow --debug
+./build/Fader.app/Contents/MacOS/Fader --debug
 
 # With a floating window (when the user's Ice/Bartender hides the menu bar icon)
-./build/SonicFlow.app/Contents/MacOS/SonicFlow --preview-live
+./build/Fader.app/Contents/MacOS/Fader --preview-live
 ```
 
 ### Sandbox
@@ -47,7 +47,7 @@ manage these via `/sandbox`.
 
 | File | Role |
 |---|---|
-| `App/SonicFlowApp.swift` | `@main`, MenuBarExtra, engine selection |
+| `App/FaderApp.swift` | `@main`, MenuBarExtra, engine selection |
 | `App/AppDelegate.swift` | Signal cleanup, `--preview` floating window, `--debug` detector |
 | `Models/AudioState.swift` | `@Observable @MainActor` single source of truth |
 | `Models/AudioApp.swift` | Per-app data struct (note: `supportsVolumeControl`) |
@@ -101,7 +101,7 @@ manage these via `/sandbox`.
 3. **`MenuBarExtra` content's `.task` only fires when the user opens the
    menu.** If you put engine startup there and the user has a menu bar
    manager (Ice/Bartender) hiding the icon, the engine never starts. Use
-   `init()` on the `@main App` instead — see `SonicFlowApp.swift`.
+   `init()` on the `@main App` instead — see `FaderApp.swift`.
 
 4. **Helper bundle IDs** (`com.apple.Music.helper`, `.gpu`, `.renderer`,
    `xpcservice`) show up in the process list. Dedupe them in
@@ -169,11 +169,11 @@ There are no XCTests yet — manual verification:
 ## Common operations
 
 ```bash
-# Reset audio if SonicFlow crashed and left the system default pointed at
+# Reset audio if Fader crashed and left the system default pointed at
 # a dead aggregate (rare now that we don't switch defaults, but the script
 # is still useful for debugging):
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift \
-  /tmp/claude/sonicflow/reset-audio.swift
+  /tmp/claude/fader/reset-audio.swift
 
 # Regenerate the app icon from SVG
 cd Resources/Icon && rsvg-convert -w 1024 -h 1024 AppIcon.svg -o master.png
