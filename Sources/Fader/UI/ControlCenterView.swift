@@ -8,10 +8,17 @@ struct ControlCenterView: View {
     var body: some View {
         @Bindable var state = engine.state
 
+        // FooterView/HeaderView are both top-level (shared across the main
+        // and settings screens) rather than HeaderView living up top and
+        // FooterView being nested only inside MainPanel — that's what
+        // caused the two screens to look inconsistent when switching
+        // (settings had no footer strip at all, and the header was the
+        // only shared chrome). Now both strips are identical regardless of
+        // which screen is showing.
         VStack(spacing: 0) {
-            HeaderView(state: state, showSettings: $showSettings)
+            FooterView(engine: engine)
                 .padding(.horizontal, 16)
-                .padding(.top, 18)
+                .padding(.top, 14)
                 .padding(.bottom, 10)
 
             Divider().opacity(0.3)
@@ -23,6 +30,13 @@ struct ControlCenterView: View {
                 MainPanel(engine: engine, state: state)
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
+
+            Divider().opacity(0.25)
+
+            HeaderView(state: state, showSettings: $showSettings)
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 14)
         }
         .frame(width: 340)
         .frame(minHeight: 280)
@@ -55,7 +69,7 @@ private struct MainPanel: View {
 
             if visibleApps.isEmpty {
                 EmptyStateView()
-                    .padding(.vertical, 36)
+                    .padding(.vertical, 24)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 4) {
@@ -72,14 +86,8 @@ private struct MainPanel: View {
                 }
                 .frame(maxHeight: 360)
             }
-
-            Divider().opacity(0.2)
-
-            FooterView(engine: engine)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
         }
-        .padding(.top, 10)
+        .padding(.vertical, 10)
         // Deliberately NOT animated: MenuBarExtra(.window) auto-sizes its
         // popover to content, and animating a height-affecting change here
         // (ducking banner / app list appearing) makes the window itself
@@ -101,35 +109,19 @@ private struct MainPanel: View {
 
 private struct EmptyStateView: View {
     var body: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .stroke(Brand.softGradient(opacity: 0.35), lineWidth: 1.5)
-                    .frame(width: 56, height: 56)
-                Image(systemName: "slider.vertical.3")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(Brand.gradient)
-            }
-            .frame(height: 64)
-
+        VStack(spacing: 6) {
             Text("Listening for audio…")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.primary)
-                .padding(.top, 2)
 
             Text("Apps appear here the moment they start playing sound.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 240)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 260)
         }
         .frame(maxWidth: .infinity)
-        // Deliberately static — no pulse/repeatForever animation. An
-        // infinite, always-running animation inside a MenuBarExtra(.window)
-        // popover is the same risk pattern that caused three separate
-        // "grows/shrinks on repeat" bugs this session (ducking banner,
-        // hover-preview, level meter), just not yet confirmed as a fourth
-        // trigger.
     }
 }
 
@@ -176,7 +168,7 @@ private struct HeaderView: View {
                 // auto-sizing popover window's own resize.
                 showSettings.toggle()
             } label: {
-                Image(systemName: showSettings ? "chevron.left" : "slider.horizontal.3")
+                Image(systemName: showSettings ? "chevron.left" : "gearshape.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.primary)
                     .frame(width: 26, height: 26)
@@ -229,10 +221,14 @@ private struct FooterView: View {
     let engine: any AudioEngine
 
     var body: some View {
-        HStack(spacing: 8) {
+        // Every element gets the same 22pt-tall slot to center within —
+        // without it, the 10pt label and the 12-13pt icons don't share a
+        // common vertical anchor and visibly drift out of alignment.
+        HStack(alignment: .center, spacing: 8) {
             Text(footerLabel)
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
+                .frame(height: 22)
 
             Spacer()
 
@@ -249,7 +245,7 @@ private struct FooterView: View {
                         .font(.system(size: 13))
                 }
                 .menuStyle(.borderlessButton)
-                .frame(width: 22)
+                .frame(width: 22, height: 22)
                 .help("Toggle which apps are 'playing audio'")
             }
 
@@ -259,6 +255,7 @@ private struct FooterView: View {
                 Image(systemName: "power")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
+                    .frame(width: 22, height: 22)
             }
             .buttonStyle(.plain)
             .help("Quit Fader")

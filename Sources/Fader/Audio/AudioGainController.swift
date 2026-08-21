@@ -92,6 +92,13 @@ final class AudioGainController {
         slotByBundle[bundleID]?.setGain(effective)
     }
 
+    /// Real, audio-derived peak level (0...~1, pre-gain) for the app's tap,
+    /// updated every IOProc cycle. Returns 0 for apps with no tap (e.g. a
+    /// live call, which is never tapped — see CoreAudioEngine).
+    func level(forBundle bundleID: String) -> Float {
+        slotByBundle[bundleID]?.level ?? 0
+    }
+
     func shutdown() {
         deviceChangeListener?.dispose()
         deviceChangeListener = nil

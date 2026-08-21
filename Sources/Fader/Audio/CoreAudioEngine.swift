@@ -20,7 +20,6 @@ final class CoreAudioEngine: AudioEngine {
     private var systemVolumeListener: SystemVolumeListener?
     private var pulseTask: Task<Void, Never>?
     private var externalVolumePollTask: Task<Void, Never>?
-    private var pulsePhase: Double = 0
 
     /// True while we're WRITING the system volume from a UI slider drag.
     /// Suppresses the listener echo so we don't fight the user's input.
@@ -268,15 +267,20 @@ final class CoreAudioEngine: AudioEngine {
         return icon
     }
 
-    // MARK: - Soft-pulse meter (until Phase 3 polish wires real RMS)
+    // MARK: - Level meter — real audio, smoothed for display
 
-    /// Phase 3 step 1 doesn't yet sample the IOProc buffers for visual meters;
-    /// we keep the soft pulse so the UI feels alive. The next polish step is
-    /// to compute RMS in the IOProc and publish via a lock-free ring.
+    /// Reads real peak levels from the gain controller's per-tap taps
+    /// (AggregateOutputDevice.captureCallback publishes these every IOProc
+    /// cycle, ~10ms) and applies simple VU-style attack/release smoothing
+    /// before publishing to the UI. 40ms keeps the visible steps small
+    /// enough to read as smooth motion without needing SwiftUI-level
+    /// `.animation()` on the displayed value, which is what actually
+    /// caused the popover resize-loop bugs — this only touches how often
+    /// we hand SwiftUI a new (already-settled) number.
     private func startPulseLoop() {
         pulseTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(200))
+                try? await Task.sleep(for: .milliseconds(40))
                 self?.tickPulse()
             }
         }
@@ -287,14 +291,20 @@ final class CoreAudioEngine: AudioEngine {
         let hasMovingMeter = state.apps.contains(where: { $0.levelMeter > 0.001 })
         guard hasActive || hasMovingMeter else { return }
 
-        pulsePhase += 0.4
         for i in state.apps.indices {
-            if state.apps[i].isActive {
-                let seed = Double(state.apps[i].id.hashValue & 0xff) / 255.0
-                let raw = abs(sin(pulsePhase + seed * .pi * 2))
-                state.apps[i].levelMeter = Float(raw * 0.5) * state.effectiveVolume(for: state.apps[i])
-            } else if state.apps[i].levelMeter > 0.001 {
-                state.apps[i].levelMeter = max(0, state.apps[i].levelMeter - 0.05)
+            let app = state.apps[i]
+            if app.isActive, app.supportsVolumeControl {
+                let raw = min(1, gainController.level(forBundle: app.id))
+                let target = raw * state.effectiveVolume(for: app)
+                let current = app.levelMeter
+                // Fast attack, slower release — rises quickly on a real
+                // transient, falls smoothly instead of snapping to 0.
+                let coeff: Float = target > current ? 0.55 : 0.22
+                state.apps[i].levelMeter = current + (target - current) * coeff
+            } else if app.levelMeter > 0.001 {
+                state.apps[i].levelMeter = max(0, app.levelMeter - 0.06)
+            } else if app.levelMeter != 0 {
+                state.apps[i].levelMeter = 0
             }
         }
     }

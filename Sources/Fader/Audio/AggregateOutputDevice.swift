@@ -8,10 +8,13 @@ import AudioToolbox
 final class GainSlot {
     private(set) var gain: Float = 1.0
     private let pointer: UnsafeMutablePointer<Float>
+    private let levelPointer: UnsafeMutablePointer<Float>
 
-    init(pointer: UnsafeMutablePointer<Float>) {
+    init(pointer: UnsafeMutablePointer<Float>, levelPointer: UnsafeMutablePointer<Float>) {
         self.pointer = pointer
+        self.levelPointer = levelPointer
         pointer.pointee = 1.0
+        levelPointer.pointee = 0
     }
 
     func setGain(_ value: Float) {
@@ -19,6 +22,12 @@ final class GainSlot {
         gain = clamped
         pointer.pointee = clamped
     }
+
+    /// Most recent peak |sample| seen on this app's tap input, pre-gain,
+    /// updated every IOProc cycle (~10ms) by the realtime capture callback.
+    /// Real audio-derived level, not simulated — the UI's pulse loop reads
+    /// this and applies its own attack/release smoothing for display.
+    var level: Float { levelPointer.pointee }
 }
 
 /// **CAPTURE half of Phase 3.**
@@ -41,6 +50,9 @@ final class AggregateOutputDevice {
     /// Per-tap gain slots in the same order taps were passed at init.
     let gainSlots: [GainSlot]
     private let gainBuffer: UnsafeMutableBufferPointer<Float>
+    /// Per-tap peak levels — same order/indexing as gainBuffer, written by
+    /// the realtime callback, exposed via GainSlot.level.
+    private let levelBuffer: UnsafeMutableBufferPointer<Float>
 
     /// Output ring buffer shared with the playback IOProc.
     private let ringBuffer: FloatRingBuffer
@@ -77,8 +89,16 @@ final class AggregateOutputDevice {
         let buf = UnsafeMutableBufferPointer<Float>.allocate(capacity: max(1, taps.count))
         buf.initialize(repeating: 1.0)
         self.gainBuffer = buf
+
+        let lvlbuf = UnsafeMutableBufferPointer<Float>.allocate(capacity: max(1, taps.count))
+        lvlbuf.initialize(repeating: 0)
+        self.levelBuffer = lvlbuf
+
         self.gainSlots = (0..<taps.count).map { i in
-            GainSlot(pointer: buf.baseAddress!.advanced(by: i))
+            GainSlot(
+                pointer: buf.baseAddress!.advanced(by: i),
+                levelPointer: lvlbuf.baseAddress!.advanced(by: i)
+            )
         }
 
         let cbuf = UnsafeMutableBufferPointer<UInt64>.allocate(capacity: 3)
@@ -115,7 +135,9 @@ final class AggregateOutputDevice {
         let status = AudioHardwareCreateAggregateDevice(description as CFDictionary, &aggID)
         guard status == noErr, aggID != kAudioObjectUnknown else {
             buf.deallocate()
+            lvlbuf.deallocate()
             cbuf.deallocate()
+            pbuf.deallocate()
             throw AggregateError.creationFailed(status: status)
         }
         self.aggregateID = aggID
@@ -128,6 +150,7 @@ final class AggregateOutputDevice {
         }
         AudioHardwareDestroyAggregateDevice(aggregateID)
         gainBuffer.deallocate()
+        levelBuffer.deallocate()
         counterBuffer.deallocate()
         peakBuffer.deallocate()
         didLogPtr?.deallocate()
@@ -135,6 +158,7 @@ final class AggregateOutputDevice {
 
     func start() throws {
         let gainPtr = gainBuffer.baseAddress!
+        let levelPtr = levelBuffer.baseAddress!
         let counterPtr = counterBuffer.baseAddress!
         let peakPtr = peakBuffer.baseAddress!
         let count = slotCount
@@ -154,6 +178,7 @@ final class AggregateOutputDevice {
                 input: inputData,
                 output: outputData,
                 gains: gainPtr,
+                levels: levelPtr,
                 slotCount: count,
                 ring: ring,
                 counters: counterPtr,
@@ -193,6 +218,7 @@ final class AggregateOutputDevice {
         input: UnsafePointer<AudioBufferList>,
         output: UnsafeMutablePointer<AudioBufferList>,
         gains: UnsafeMutablePointer<Float>,
+        levels: UnsafeMutablePointer<Float>,
         slotCount: Int,
         ring: FloatRingBuffer,
         counters: UnsafeMutablePointer<UInt64>,
@@ -245,15 +271,21 @@ final class AggregateOutputDevice {
 
             for i in 0..<tapCount {
                 let inB = inList[i]
-                guard let mData = inB.mData else { continue }
+                guard let mData = inB.mData else { levels[i] = 0; continue }
                 let inFloats = mData.assumingMemoryBound(to: Float.self)
                 let inSamples = Int(inB.mDataByteSize) / MemoryLayout<Float>.size
                 totalIn &+= UInt64(inSamples)
 
+                // This app's own peak (pre-gain) — real signal, published
+                // for the UI's level meter. Single pass also feeds the
+                // aggregate inputPeak diagnostic below.
+                var tapPeak: Float = 0
                 for f in 0..<inSamples {
                     let a = abs(inFloats[f])
-                    if a > inputPeak { inputPeak = a }
+                    if a > tapPeak { tapPeak = a }
                 }
+                levels[i] = tapPeak
+                if tapPeak > inputPeak { inputPeak = tapPeak }
 
                 let g = gains.advanced(by: i).pointee
                 if g == 0 { continue }

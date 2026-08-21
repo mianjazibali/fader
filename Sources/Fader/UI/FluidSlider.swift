@@ -4,7 +4,8 @@ import SwiftUI
 /// capsule track with a solid fill and no separate thumb — the fill's own
 /// edge is the indicator — flanked by static min/max icons OUTSIDE the
 /// track (quiet on the left, loud on the right), not embedded inside it.
-/// The fill uses the app's brand gradient, the same on every slider.
+/// The fill is a plain adaptive white/black, same as the system control —
+/// the brand's orange gradient was tried here and looked overkill.
 struct FluidSlider: View {
     @Binding var value: Double          // 0...1
     var height: CGFloat = 24
@@ -36,7 +37,7 @@ struct FluidSlider: View {
                         .fill(Color.primary.opacity(0.10))
 
                     Capsule()
-                        .fill(Brand.horizontalGradient)
+                        .fill(Color.primary.opacity(0.92))
                         .frame(width: fillWidth)
 
                     if meterWidth > 1 {
