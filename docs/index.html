@@ -617,7 +617,7 @@
 <span class="comment"># Option A — download the .app bundle</span>
 <span class="prompt">$</span> curl -L -o Fader.zip \
     https://github.com/mianjazibali/fader/releases/latest/download/Fader.zip
-<span class="prompt">$</span> unzip Fader.zip
+<span class="prompt">$</span> ditto -x -k Fader.zip .
 <span class="prompt">$</span> mv Fader.app /Applications/
 <span class="prompt">$</span> open /Applications/Fader.app
 
