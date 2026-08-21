@@ -90,19 +90,25 @@
   }
   .btn-download:hover { background: var(--accent); border-color: var(--accent); color: var(--ink); }
 
-  /* Hero — stacked, not split-with-mockup. Text is the whole width. */
-  .hero { padding: 84px 0 56px; max-width: 760px; }
+  /* Hero — split, copy on the left, live demo on the right. */
+  .hero { padding: 84px 0 90px; }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 48px;
+    align-items: start;
+  }
   .kicker {
     font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
     color: var(--accent); margin-bottom: 18px;
   }
   h1 {
     font-family: -apple-system, "SF Pro Display", sans-serif;
-    font-size: clamp(42px, 7vw, 84px);
+    font-size: clamp(36px, 5.4vw, 64px);
     font-weight: 800;
-    line-height: 0.98;
-    letter-spacing: -3.5px;
-    margin-bottom: 28px;
+    line-height: 1.0;
+    letter-spacing: -2.6px;
+    margin-bottom: 26px;
   }
   .hero p.lede {
     font-size: 21px; line-height: 1.5;
@@ -130,8 +136,8 @@
     margin-top: 22px; color: var(--muted); font-size: 14px;
   }
 
-  /* Live demo section */
-  .demo-section { padding: 8px 0 90px; }
+  /* Live demo, right column of the hero */
+  .hero-demo { }
   .demo-label {
     display: flex; align-items: center; gap: 10px;
     font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
@@ -142,7 +148,7 @@
   }
   .demo-frame {
     border: 1.5px solid var(--line);
-    padding: 40px;
+    padding: 22px;
     display: flex; justify-content: center;
   }
 
@@ -152,7 +158,8 @@
     background: var(--panel);
     border-radius: 16px;
     box-shadow: 0 24px 60px rgba(23,20,15,0.18);
-    width: 380px;
+    width: 100%;
+    max-width: 380px;
     overflow: hidden;
     user-select: none;
   }
@@ -274,10 +281,13 @@
     transition: border-color .15s, color .15s;
   }
   .demo-call-toggle:hover { border-color: var(--accent); color: #fff; }
-  .demo-hint {
-    text-align: center; font-size: 13px; color: var(--muted);
-    margin-top: 18px;
+
+  .demo-legend { list-style: none; margin-top: 20px; }
+  .demo-legend li {
+    font-size: 13px; color: var(--muted); line-height: 1.55;
+    padding: 8px 0; border-top: 1px solid var(--line);
   }
+  .demo-legend strong { color: var(--ink); font-weight: 700; }
 
   /* Sections */
   section.container { padding-top: 4px; padding-bottom: 90px; }
@@ -393,6 +403,10 @@
   .modal-skip:hover { color: var(--ink); }
 
   /* Mobile */
+  @media (max-width: 880px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 48px; }
+    h1 { font-size: clamp(38px, 9vw, 60px); }
+  }
   @media (max-width: 720px) {
     .hero { padding: 56px 0 40px; }
     nav .nav-right { gap: 14px; }
@@ -426,59 +440,68 @@
 </nav>
 
 <header class="hero container">
-  <p class="kicker">Free · Open source · macOS 14.2+</p>
-  <h1>Turn any app down.<br>Just that one.</h1>
-  <p class="lede">
-    One app too loud? One notification sound ruining a call? Give
-    <strong>every app its own volume slider</strong> — Music, Zoom, Chrome,
-    anything making noise — and let Fader quiet everything else the
-    moment a call starts.
-  </p>
-  <div class="cta-row">
-    <button class="btn btn-primary" onclick="startDownload()">Download v0.2.0 ↓</button>
-    <a class="btn btn-ghost" href="https://github.com/mianjazibali/fader">View source →</a>
-  </div>
-  <p class="meta-line">MIT licensed, fully open source · No account · No telemetry</p>
-</header>
-
-<section id="demo" class="container demo-section">
-  <p class="demo-label"><span class="rec"></span> Live demo — this is the real UI, running right here</p>
-  <div class="demo-frame">
-    <!-- Live, working demo — not a screenshot. Try it. -->
-    <div class="panel-mock">
-      <div class="panel-topbar">
-        <span class="label" id="demoTopLabel">Live audio detection</span>
-        <span class="spacer"></span>
-        <button class="icon-btn" id="soundToggleBtn" title="Play demo sound" onclick="toggleDemoAudio()">
-          <svg id="soundIcon" viewBox="0 0 20 20" fill="none"><path d="M6.5 4.8v10.4a.8.8 0 001.22.68l8.2-5.2a.8.8 0 000-1.36l-8.2-5.2a.8.8 0 00-1.22.68z" fill="currentColor"/></svg>
-        </button>
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <p class="kicker">Free · Open source · macOS 14.2+</p>
+      <h1>Turn any app down.<br>Just that one.</h1>
+      <p class="lede">
+        One app too loud? One notification sound ruining a call? Give
+        <strong>every app its own volume slider</strong> — Music, Zoom, Chrome,
+        anything making noise — and let Fader quiet everything else the
+        moment a call starts.
+      </p>
+      <div class="cta-row">
+        <button class="btn btn-primary" onclick="startDownload()">Download v0.2.0 ↓</button>
+        <a class="btn btn-ghost" href="https://github.com/mianjazibali/fader">View source →</a>
       </div>
-      <div class="panel-divider"></div>
+      <p class="meta-line">MIT licensed, fully open source · No account · No telemetry</p>
+    </div>
 
-      <div class="demo-banner" id="demoBanner">
-        <span>📞 On a call · others lowered 50%</span>
-      </div>
+    <div class="hero-demo" id="demo">
+      <p class="demo-label"><span class="rec"></span> Live demo — the real UI, running right here</p>
+      <div class="demo-frame">
+        <!-- Live, working demo — not a screenshot. Try it. -->
+        <div class="panel-mock">
+          <div class="panel-topbar">
+            <span class="label" id="demoTopLabel">Live audio detection</span>
+            <span class="spacer"></span>
+            <button class="icon-btn" id="soundToggleBtn" title="Play demo sound" onclick="toggleDemoAudio()">
+              <svg id="soundIcon" viewBox="0 0 20 20" fill="none"><path d="M6.5 4.8v10.4a.8.8 0 001.22.68l8.2-5.2a.8.8 0 000-1.36l-8.2-5.2a.8.8 0 00-1.22.68z" fill="currentColor"/></svg>
+            </button>
+          </div>
+          <div class="panel-divider"></div>
 
-      <div class="panel-body" id="demoRows">
-        <!-- rows injected by JS -->
-      </div>
+          <div class="demo-banner" id="demoBanner">
+            <span>📞 On a call · others lowered 50%</span>
+          </div>
 
-      <button class="demo-call-toggle" id="demoCallBtn" onclick="toggleDemoCall()">▶ Simulate joining a call</button>
+          <div class="panel-body" id="demoRows">
+            <!-- rows injected by JS -->
+          </div>
 
-      <div class="panel-divider" style="margin-top:4px;"></div>
-      <div class="panel-brand">
-        <div class="mark">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 12V4M8 13V3M13 10V6" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+          <button class="demo-call-toggle" id="demoCallBtn" onclick="toggleDemoCall()">▶ Simulate joining a call</button>
+
+          <div class="panel-divider" style="margin-top:4px;"></div>
+          <div class="panel-brand">
+            <div class="mark">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 12V4M8 13V3M13 10V6" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <div>
+              <div class="name">Fader</div>
+              <div class="status"><span class="dot"></span><span id="demoStatus">2 apps playing</span></div>
+            </div>
+          </div>
         </div>
-        <div>
-          <div class="name">Fader</div>
-          <div class="status"><span class="dot"></span><span id="demoStatus">2 apps playing</span></div>
-        </div>
       </div>
+      <ul class="demo-legend">
+        <li><strong>Speaker icon, top right</strong> — turns this demo's sound on or off</li>
+        <li><strong>Speaker icon, next to each slider</strong> — mutes just that one app</li>
+        <li><strong>Slider</strong> — drag to change that app's volume</li>
+        <li><strong>"Simulate joining a call"</strong> — watch the other apps automatically quiet down</li>
+      </ul>
     </div>
   </div>
-  <p class="demo-hint">Click the speaker icon for sound, then drag a slider.</p>
-</section>
+</header>
 
 <section id="features" class="container">
   <p class="section-kicker">Why Fader</p>
