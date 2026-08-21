@@ -55,35 +55,22 @@ struct AppRowView: View {
                         .contentTransition(.numericText())
                 }
 
-                // Bottom line: mute glyph + slider
-                HStack(spacing: 10) {
-                    Button {
-                        guard app.supportsVolumeControl else { return }
-                        withAnimation(.snappy) { engine.setMuted(!app.isMuted, for: app.id) }
-                        HapticFeedback.tap()
-                    } label: {
-                        Image(systemName: app.isMuted ? "speaker.slash.fill" : muteGlyph)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(app.isMuted ? .red : .secondary)
-                            .frame(width: 14, height: 14)
-                            .contentTransition(.symbolEffect(.replace))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!app.supportsVolumeControl)
-
-                    FluidSlider(
-                        value: Binding(
-                            get: { Double(app.volume) },
-                            set: { engine.applyGain(Float($0), to: app.id) }
-                        ),
-                        height: 22,
-                        accent: accentColor,
-                        levelMeter: app.isActive ? Double(app.levelMeter) : 0
-                    )
-                    .disabled(!app.supportsVolumeControl)
-                    .opacity(app.supportsVolumeControl ? 1.0 : 0.5)
-                    .allowsHitTesting(app.supportsVolumeControl)
-                }
+                // Native-style slider — icon embedded in the track, same as
+                // the system Volume/Brightness sliders. Muting stays on the
+                // app icon (tap) and context menu; the icon here is just
+                // the native visual language, not a separate tap target.
+                FluidSlider(
+                    value: Binding(
+                        get: { Double(app.volume) },
+                        set: { engine.applyGain(Float($0), to: app.id) }
+                    ),
+                    height: 26,
+                    icon: app.isMuted ? "speaker.slash.fill" : muteGlyph,
+                    levelMeter: app.isActive ? Double(app.levelMeter) : 0
+                )
+                .disabled(!app.supportsVolumeControl)
+                .opacity(app.supportsVolumeControl ? 1.0 : 0.5)
+                .allowsHitTesting(app.supportsVolumeControl)
             }
         }
         .padding(.horizontal, 12)
@@ -194,17 +181,6 @@ struct AppRowView: View {
         }
     }
 
-    /// Slider gradient accent — varies by category for quick visual scan.
-    private var accentColor: Color {
-        if app.isMuted { return .red.opacity(0.55) }
-        switch app.category {
-        case .communication: return .orange
-        case .media:         return Color(red: 0.12, green: 0.30, blue: 1.0)   // vivid media blue
-        case .browser:       return Color(red: 0.20, green: 0.50, blue: 1.0)
-        case .game:          return Color(red: 0.50, green: 0.20, blue: 1.0)
-        case .other:         return .accentColor
-        }
-    }
 }
 
 /// App icon with a brand-gradient ring when active + animated level meter.

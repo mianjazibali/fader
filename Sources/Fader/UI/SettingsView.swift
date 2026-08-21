@@ -23,8 +23,7 @@ struct SettingsView: View {
                                 get: { Double(state.duckingAmount) },
                                 set: { state.duckingAmount = Float($0) }
                             ),
-                            height: 18,
-                            accent: .orange
+                            height: 18
                         )
                     }
                     .disabled(!state.duckingEnabled)
