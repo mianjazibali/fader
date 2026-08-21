@@ -59,7 +59,13 @@ struct FluidSlider: View {
                 .frame(height: height)
                 .scaleEffect(isDragging ? 1.02 : 1.0, anchor: .leading)
                 .animation(.spring(response: 0.2, dampingFraction: 0.75), value: isDragging)
-                .animation(.easeOut(duration: 0.1), value: hoverFraction)
+                // Deliberately NOT animated: onContinuousHover fires on
+                // nearly every mouse-move, and wrapping that in .animation
+                // means a constant stream of animation transactions inside
+                // the MenuBarExtra(.window) popover — which is exactly what
+                // caused the earlier "grows/shrinks on repeat" bug, even
+                // though this only touches fill width, not the popover's
+                // own layout size. Instant updates avoid the churn.
                 .contentShape(Rectangle())
                 .onContinuousHover { phase in
                     switch phase {
