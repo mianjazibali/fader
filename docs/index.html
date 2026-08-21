@@ -54,7 +54,12 @@
     overflow-x: hidden;
   }
 
-  .container { max-width: 1040px; margin: 0 auto; padding: 0 28px; }
+  /* 1200px instead of a narrower 1040px: this app is a Mac menu-bar
+     utility, and its landing page is mainly viewed on Mac laptop/desktop
+     browser widths (1440-1728px+ logical points) — a narrower container
+     left large unused margins on those screens instead of using the
+     space the way a Mac-native page should. */
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 28px; }
 
   /* Nav */
   nav {
@@ -315,7 +320,7 @@
   .spec-list { border-top: 1.5px solid var(--line); }
   .spec-row {
     display: grid;
-    grid-template-columns: 60px 240px 1fr;
+    grid-template-columns: 60px 240px minmax(0, 1fr);
     gap: 24px;
     padding: 22px 0;
     border-bottom: 1.5px solid var(--line);
@@ -326,7 +331,7 @@
     font-variant-numeric: tabular-nums;
   }
   .spec-title { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; }
-  .spec-desc { color: var(--muted); font-size: 15px; }
+  .spec-desc { color: var(--muted); font-size: 15px; max-width: 520px; }
 
   /* Footer */
   footer {
