@@ -27,7 +27,10 @@ struct ControlCenterView: View {
         .frame(width: 340)
         .frame(minHeight: 280)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: showSettings)
+        // Not animated, same reason as MainPanel below: MainPanel and
+        // SettingsView have different natural heights, and animating that
+        // swap makes the auto-sizing MenuBarExtra(.window) popover fight
+        // the spring every frame instead of settling.
     }
 }
 
@@ -77,8 +80,15 @@ private struct MainPanel: View {
                 .padding(.vertical, 8)
         }
         .padding(.top, 10)
-        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: state.isAnyCommunicationActive)
-        .animation(.spring(response: 0.35, dampingFraction: 0.78), value: visibleApps.map(\.id))
+        // Deliberately NOT animated: MenuBarExtra(.window) auto-sizes its
+        // popover to content, and animating a height-affecting change here
+        // (ducking banner / app list appearing) makes the window itself
+        // fight the in-flight spring animation every frame — it never
+        // settles and the popover visibly grows/shrinks on a loop. Content
+        // changes size instantly instead; per-row insertion/removal still
+        // has its own `.transition()` below for a soft fade even without
+        // an ambient animation context.
+        //
         // System volume changes (F11/F12, Control Center) rescale every
         // app's effective gain, since per-app volume is relative to it.
         // Ducking changes need the same re-push.
@@ -184,7 +194,10 @@ private struct HeaderView: View {
             Spacer()
 
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { showSettings.toggle() }
+                // Not wrapped in withAnimation — see the note on
+                // ControlCenterView's body: animating this swap fights the
+                // auto-sizing popover window's own resize.
+                showSettings.toggle()
             } label: {
                 Image(systemName: showSettings ? "chevron.left" : "slider.horizontal.3")
                     .font(.system(size: 12, weight: .semibold))
