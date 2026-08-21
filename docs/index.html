@@ -778,10 +778,9 @@
   // ---- Demo audio ----
   // All three are real CC0 (public-domain-equivalent) recordings from
   // Freesound, mixed through the same per-app GainNode a slider already
-  // drives — see docs/audio/CREDITS.md for sources. Spotify and Chrome
-  // loop continuously (ambience); Zoom's chime is a one-shot, played
-  // once each time a call starts, matching its "notification" character
-  // instead of looping a 4-second clip like a ring tone.
+  // drives — see docs/audio/CREDITS.md for sources. All three loop for
+  // as long as they're relevant: Spotify/Chrome while sound is on,
+  // Zoom's chime for as long as the simulated call is active.
   //
   // Fetching + decoding starts immediately on page load — that's silent,
   // so it doesn't touch the browser's autoplay policy. Actual playback
@@ -852,14 +851,6 @@
     if (audioBuffers[id]) { startBufferLoop(id); return; }
     bufferPromises[id].then(() => { if (audioOn) startBufferLoop(id); });
   }
-  function playBufferOnce(id) {
-    const buffer = audioBuffers[id];
-    if (!buffer) { bufferPromises[id].then(() => { if (audioOn) playBufferOnce(id); }); return; }
-    const src = audioCtx.createBufferSource();
-    src.buffer = buffer;
-    src.connect(getAppGain(id));
-    src.start(0);
-  }
   const playIcon = '<path d="M6.5 4.8v10.4a.8.8 0 001.22.68l8.2-5.2a.8.8 0 000-1.36l-8.2-5.2a.8.8 0 00-1.22.68z" fill="currentColor"/>';
   const pauseIcon = '<rect x="5.5" y="4.5" width="3" height="11" rx="1" fill="currentColor"/><rect x="11.5" y="4.5" width="3" height="11" rx="1" fill="currentColor"/>';
   function toggleDemoAudio() {
@@ -872,10 +863,11 @@
     if (audioOn) {
       playWhenReady('spotify');
       playWhenReady('chrome');
-      if (callActive) playBufferOnce('zoom');
+      if (callActive) playWhenReady('zoom');
     } else {
       stopBufferLoop('spotify');
       stopBufferLoop('chrome');
+      stopBufferLoop('zoom');
     }
     updateAllAudioGains();
   }
@@ -932,7 +924,9 @@
   }
   function toggleDemoCall() {
     callActive = !callActive;
-    if (audioOn && callActive) playBufferOnce('zoom');
+    if (audioOn) {
+      if (callActive) playWhenReady('zoom'); else stopBufferLoop('zoom');
+    }
     renderDemo();
   }
   renderDemo();
