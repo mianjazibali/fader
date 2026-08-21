@@ -3,31 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SonicFlow — Per-app volume for macOS. Finally.</title>
-<meta name="description" content="A free, open-source macOS menu bar app for per-app volume control. Music, Zoom, Chrome — control each one independently. Auto-ducks media when someone speaks. Under 1% CPU.">
+<title>Fader — Volume Mixer for Mac | Per-App Volume Control</title>
+<meta name="description" content="Fader is a free, open-source volume mixer for Mac. Independent per-app volume control on macOS — Music, Zoom, Chrome, anything — plus auto-ducking. Under 1% CPU.">
 
 <!-- Open Graph -->
-<meta property="og:title" content="SonicFlow — Per-app volume for macOS">
-<meta property="og:description" content="Free, open-source per-app volume control for macOS. Music, Zoom, Chrome, anything — independent sliders + auto-ducking. Under 1% CPU.">
-<meta property="og:url" content="https://mianjazibali.github.io/sonicflow/">
-<meta property="og:image" content="https://mianjazibali.github.io/sonicflow/og-card.png?v=2">
-<meta property="og:image:secure_url" content="https://mianjazibali.github.io/sonicflow/og-card.png?v=2">
+<meta property="og:title" content="Fader — Volume Mixer for Mac">
+<meta property="og:description" content="Fader is a free, open-source volume mixer for Mac. Independent per-app volume control on macOS — Music, Zoom, Chrome, anything — plus auto-ducking. Under 1% CPU.">
+<meta property="og:url" content="https://mianjazibali.github.io/fader/">
+<meta property="og:image" content="https://mianjazibali.github.io/fader/og-card.png?v=3">
+<meta property="og:image:secure_url" content="https://mianjazibali.github.io/fader/og-card.png?v=3">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="SonicFlow app preview">
+<meta property="og:image:alt" content="Fader app preview">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://mianjazibali.github.io/sonicflow/og-card.png?v=2">
+<meta name="twitter:image" content="https://mianjazibali.github.io/fader/og-card.png?v=3">
 
-<link rel="icon" type="image/png" href="https://mianjazibali.github.io/sonicflow/favicon.png">
+<link rel="icon" type="image/png" href="https://mianjazibali.github.io/fader/favicon.png">
 
 <style>
   :root {
-    --cyan:    #1FE0FF;
-    --blue:    #1A4DFF;
-    --violet:  #7A1FFF;
-    --magenta: #C211FF;
+    --cyan:    #FFD60A;
+    --blue:    #FF8A00;
+    --violet:  #FF3B30;
+    --magenta: #D0021B;
     --ink:     #0B0F1F;
     --ink-2:   #16194D;
     --mist:    #F5F8FF;
@@ -58,8 +58,8 @@
     position: fixed;
     inset: 0;
     background:
-      radial-gradient(ellipse 80% 50% at 30% 0%, rgba(26,77,255,0.25), transparent),
-      radial-gradient(ellipse 60% 40% at 80% 30%, rgba(194,17,255,0.20), transparent),
+      radial-gradient(ellipse 80% 50% at 30% 0%, rgba(255,138,0,0.22), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 30%, rgba(208,2,27,0.18), transparent),
       linear-gradient(180deg, var(--ink), var(--ink-2) 60%, var(--ink));
     z-index: -1;
   }
@@ -110,12 +110,12 @@
   }
   .eyebrow {
     display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(31,224,255,0.10);
+    background: rgba(255,138,0,0.10);
     color: var(--cyan);
     padding: 7px 14px; border-radius: 999px;
     font-size: 13px; font-weight: 600;
     margin-bottom: 24px;
-    border: 1px solid rgba(31,224,255,0.20);
+    border: 1px solid rgba(255,138,0,0.20);
   }
   .eyebrow .dot {
     width: 6px; height: 6px; border-radius: 50%;
@@ -155,9 +155,9 @@
   .btn-primary {
     background: var(--mist);
     color: var(--ink);
-    box-shadow: 0 12px 36px rgba(31,224,255,0.18);
+    box-shadow: 0 12px 36px rgba(255,138,0,0.18);
   }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px rgba(31,224,255,0.32); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px rgba(255,138,0,0.32); }
   .btn-secondary {
     background: transparent;
     color: var(--mist);
@@ -306,7 +306,7 @@
   }
   .feature:hover {
     transform: translateY(-4px);
-    border-color: rgba(31,224,255,0.30);
+    border-color: rgba(255,138,0,0.30);
   }
   .feature .emoji {
     font-size: 28px; margin-bottom: 14px; display: block;
@@ -409,18 +409,6 @@
   footer .links { display: flex; gap: 24px; font-size: 14px; }
   footer .copyright { font-size: 13px; color: var(--muted-2); }
 
-  /* Fork banner */
-  .fork-banner {
-    background: linear-gradient(90deg, rgba(31,224,255,0.12), rgba(122,31,255,0.12));
-    border-bottom: 1px solid var(--line);
-    text-align: center;
-    font-size: 13.5px;
-    padding: 10px 16px;
-    color: var(--mist);
-  }
-  .fork-banner a { color: var(--cyan); text-decoration: none; font-weight: 600; }
-  .fork-banner a:hover { text-decoration: underline; }
-
   .btn-coffee {
     background: #FFDD00;
     color: #0B0F1F;
@@ -452,11 +440,6 @@
 </head>
 <body>
 
-<div class="fork-banner">
-  This is a community fork of SonicFlow with a few bug fixes on top &nbsp;·&nbsp;
-  All credit to the original project: <a href="https://github.com/altuzar/sonicflow" target="_blank" rel="noopener">altuzar/sonicflow ↗</a>
-</div>
-
 <nav>
   <div class="container inner">
     <div class="brand">
@@ -469,7 +452,7 @@
           <span style="height:8px"></span>
         </div>
       </div>
-      <span class="brand-text">SonicFlow</span>
+      <span class="brand-text">Fader</span>
     </div>
     <ul>
       <li><a href="#features">Features</a></li>
@@ -477,7 +460,7 @@
       <li><a href="#install">Install</a></li>
       <li><a href="#fixes">What's fixed</a></li>
       <li><a href="#faq">FAQ</a></li>
-      <li><a href="https://github.com/mianjazibali/sonicflow">GitHub</a></li>
+      <li><a href="https://github.com/mianjazibali/fader">GitHub</a></li>
     </ul>
     <div style="display:flex; gap:10px; align-items:center;">
       <a class="btn btn-coffee" style="padding:9px 16px; border-radius:10px; font-size:14px;" href="https://buymeacoffee.com/mianjazibali" target="_blank" rel="noopener">☕ Buy us a coffee</a>
@@ -488,7 +471,7 @@
 
 <header class="hero container">
   <div>
-    <div class="eyebrow"><span class="dot"></span> Now live · v0.1.1 (fixed fork) · macOS 14.2+</div>
+    <div class="eyebrow"><span class="dot"></span> Now live · v0.2.0 · macOS 14.2+</div>
     <h1>Per-app volume<br>for macOS.<br><span class="accent">Finally.</span></h1>
     <p class="lede">
       Independent volume sliders for <strong>every app producing audio</strong>.
@@ -496,8 +479,8 @@
       Auto-ducks media when someone speaks on a call.
     </p>
     <div class="cta-row">
-      <a class="btn btn-primary" href="#install">⬇ Download v0.1.1</a>
-      <a class="btn btn-secondary" href="https://github.com/mianjazibali/sonicflow">View on GitHub →</a>
+      <a class="btn btn-primary" href="#install">⬇ Download v0.2.0</a>
+      <a class="btn btn-secondary" href="https://github.com/mianjazibali/fader">View on GitHub →</a>
     </div>
     <p class="meta-line">Free · MIT licensed · <code>&lt; 1%</code> CPU · No telemetry</p>
   </div>
@@ -511,7 +494,7 @@
         </div>
       </div>
       <div>
-        <div class="panel-title">SonicFlow</div>
+        <div class="panel-title">Fader</div>
         <div class="panel-sub">2 apps playing</div>
       </div>
     </div>
@@ -582,7 +565,7 @@
     <div class="feature">
       <span class="emoji">🎤</span>
       <h3>No purple mic dot</h3>
-      <p>SonicFlow never requests microphone permission. Process Taps capture output, not input.</p>
+      <p>Fader never requests microphone permission. Process Taps capture output, not input.</p>
     </div>
     <div class="feature">
       <span class="emoji">📖</span>
@@ -600,14 +583,14 @@
       <div class="num">1</div>
       <div>
         <h3>Detect every audio process</h3>
-        <p>SonicFlow watches <code>kAudioHardwarePropertyProcessObjectList</code>. Whenever an app starts producing output, you see it appear in the panel within ~1 second.</p>
+        <p>Fader watches <code>kAudioHardwarePropertyProcessObjectList</code>. Whenever an app starts producing output, you see it appear in the panel within ~1 second.</p>
       </div>
     </div>
     <div class="step">
       <div class="num">2</div>
       <div>
         <h3>Tap each app's audio stream</h3>
-        <p>For each active app, SonicFlow creates a <code>CATapDescription</code> with <code>CATapMutedWhenTapped</code> — the app's normal output is silenced; its audio gets routed to our private aggregate device.</p>
+        <p>For each active app, Fader creates a <code>CATapDescription</code> with <code>CATapMutedWhenTapped</code> — the app's normal output is silenced; its audio gets routed to our private aggregate device.</p>
       </div>
     </div>
     <div class="step">
@@ -632,30 +615,30 @@
   <p class="section-sub">Requires macOS 14.2 or newer. Apple Silicon and Intel.</p>
   <div class="install-block">
 <span class="comment"># Option A — download the .app bundle</span>
-<span class="prompt">$</span> curl -L -o SonicFlow.zip \
-    https://github.com/mianjazibali/sonicflow/releases/latest/download/SonicFlow.zip
-<span class="prompt">$</span> unzip SonicFlow.zip
-<span class="prompt">$</span> mv SonicFlow.app /Applications/
-<span class="prompt">$</span> open /Applications/SonicFlow.app
+<span class="prompt">$</span> curl -L -o Fader.zip \
+    https://github.com/mianjazibali/fader/releases/latest/download/Fader.zip
+<span class="prompt">$</span> unzip Fader.zip
+<span class="prompt">$</span> mv Fader.app /Applications/
+<span class="prompt">$</span> open /Applications/Fader.app
 
 <span class="comment"># Option B — build from source</span>
-<span class="prompt">$</span> git clone https://github.com/mianjazibali/sonicflow.git
-<span class="prompt">$</span> cd sonicflow
+<span class="prompt">$</span> git clone https://github.com/mianjazibali/fader.git
+<span class="prompt">$</span> cd fader
 <span class="prompt">$</span> make sign
-<span class="prompt">$</span> open build/SonicFlow.app
+<span class="prompt">$</span> open build/Fader.app
   </div>
   <div class="gatekeeper-note">
     <strong>⚠ First launch needs one extra step.</strong> This build is signed ad-hoc, not with a paid
     Apple Developer ID, so Gatekeeper will refuse to open it with a plain double-click. In Finder,
-    <strong>right-click SonicFlow.app → Open</strong>, then confirm in the dialog that appears. You only
+    <strong>right-click Fader.app → Open</strong>, then confirm in the dialog that appears. You only
     need to do this once.
   </div>
-  <p style="margin-top:22px;"><a class="btn btn-primary" href="https://github.com/mianjazibali/sonicflow/releases/latest" target="_blank" rel="noopener">⬇ Download latest release →</a></p>
+  <p style="margin-top:22px;"><a class="btn btn-primary" href="https://github.com/mianjazibali/fader/releases/latest" target="_blank" rel="noopener">⬇ Download latest release →</a></p>
 </section>
 
 <section id="fixes" class="container">
   <h2>What's fixed in <span class="accent">this fork</span></h2>
-  <p class="section-sub">Three real playback bugs found and fixed on top of the original v0.1 codebase. All credit for the app itself goes to <a href="https://github.com/altuzar/sonicflow" style="color:var(--cyan)">altuzar/sonicflow</a>.</p>
+  <p class="section-sub">Three real playback bugs found and fixed on top of the original codebase.</p>
   <div class="features">
     <div class="feature">
       <span class="emoji">🔈</span>
@@ -670,7 +653,7 @@
     <div class="feature">
       <span class="emoji">📞</span>
       <h3>Live calls stay audible</h3>
-      <p>macOS silently zeroes Process Tap content for real call audio (WhatsApp, FaceTime, etc.) — a privacy protection, not a bug we can route around. Tapping a call app was strictly worse than doing nothing, so SonicFlow now leaves call apps' audio untouched instead of muting them into silence.</p>
+      <p>macOS silently zeroes Process Tap content for real call audio (WhatsApp, FaceTime, etc.) — a privacy protection, not a bug we can route around. Tapping a call app was strictly worse than doing nothing, so Fader now leaves call apps' audio untouched instead of muting them into silence.</p>
     </div>
   </div>
 </section>
@@ -680,11 +663,11 @@
   <div class="faq">
     <details open>
       <summary>Does it trigger the macOS recording indicator?</summary>
-      <p>No purple dot — that's microphone access, which SonicFlow never requests. Process Taps are output-capture, not input. On macOS 14.4+ you may briefly see the orange audio-capture indicator, same as SoundSource / Audio Hijack.</p>
+      <p>No purple dot — that's microphone access, which Fader never requests. Process Taps are output-capture, not input. On macOS 14.4+ you may briefly see the orange audio-capture indicator, same as SoundSource / Audio Hijack.</p>
     </details>
     <details>
       <summary>Why isn't this just built into macOS?</summary>
-      <p>Apple ships per-app volume on iOS but not macOS. There's no public macOS UI for it. SonicFlow uses the same low-level APIs Apple gives third-party audio devs and builds the UI Apple didn't.</p>
+      <p>Apple ships per-app volume on iOS but not macOS. There's no public macOS UI for it. Fader uses the same low-level APIs Apple gives third-party audio devs and builds the UI Apple didn't.</p>
     </details>
     <details>
       <summary>Does it work with Bluetooth headphones / AirPods?</summary>
@@ -696,7 +679,7 @@
     </details>
     <details>
       <summary>How is this different from SoundSource?</summary>
-      <p>SoundSource is a polished commercial product ($39). SonicFlow is free, open-source, and focused on the core "per-app volume + ducking" use case. If you need EQ, audio routing, or recording, buy SoundSource.</p>
+      <p>SoundSource is a polished commercial product ($39). Fader is free, open-source, and focused on the core "per-app volume + ducking" use case. If you need EQ, audio routing, or recording, buy SoundSource.</p>
     </details>
     <details>
       <summary>Will it slow down my Mac?</summary>
@@ -704,7 +687,7 @@
     </details>
     <details>
       <summary>Where's the code?</summary>
-      <p>This fork lives at <a href="https://github.com/mianjazibali/sonicflow">github.com/mianjazibali/sonicflow</a>. The original project is at <a href="https://github.com/altuzar/sonicflow">github.com/altuzar/sonicflow</a>. MIT licensed either way. Read it, fork it, ship PRs.</p>
+      <p>It lives at <a href="https://github.com/mianjazibali/fader">github.com/mianjazibali/fader</a>. MIT licensed. Read it, fork it, ship PRs.</p>
     </details>
   </div>
 </section>
@@ -721,16 +704,15 @@
           <span style="height:7px"></span>
         </div>
       </div>
-      <span class="brand-text">SonicFlow</span>
+      <span class="brand-text">Fader</span>
     </div>
     <div class="links">
-      <a href="https://github.com/mianjazibali/sonicflow">GitHub (this fork)</a>
-      <a href="https://github.com/altuzar/sonicflow">Original project</a>
-      <a href="https://github.com/mianjazibali/sonicflow/issues">Issues</a>
-      <a href="https://github.com/mianjazibali/sonicflow/blob/main/LICENSE">License</a>
+      <a href="https://github.com/mianjazibali/fader">GitHub</a>
+      <a href="https://github.com/mianjazibali/fader/issues">Issues</a>
+      <a href="https://github.com/mianjazibali/fader/blob/main/LICENSE">License</a>
       <a href="https://buymeacoffee.com/mianjazibali" target="_blank" rel="noopener">☕ Buy us a coffee</a>
     </div>
-    <div class="copyright">MIT · Fork maintained by mianjazibali · Original by altuzar · 2026</div>
+    <div class="copyright">MIT · Fader · 2026</div>
   </div>
 </footer>
 
