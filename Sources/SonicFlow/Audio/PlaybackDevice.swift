@@ -88,6 +88,13 @@ final class PlaybackDevice {
     /// Scratch space for ring buffer reads — sized for typical IOProc buffers.
     private static let scratchSamples = 4096
 
+    /// Mix `value` into `*slot`, soft-clipped to [-1, 1].
+    @inline(__always)
+    private static func add(_ slot: inout Float, _ value: Float) {
+        let s = slot + value
+        slot = s > 1.0 ? 1.0 : (s < -1.0 ? -1.0 : s)
+    }
+
     private static func playbackCallback(
         output: UnsafeMutablePointer<AudioBufferList>,
         ring: FloatRingBuffer,
@@ -109,29 +116,46 @@ final class PlaybackDevice {
         // For the first output buffer (the physical output stream), mix in
         // ring buffer audio. Other buffers (if any — multi-stream devices)
         // are left alone.
+        //
+        // The ring buffer always carries stereo-interleaved frames (L, R, L,
+        // R, ...) because AggregateOutputDevice mixes taps that way. The
+        // *real* output device's channel count can differ (e.g. a Bluetooth
+        // headset drops to mono HFP during a call), so we must down/up-mix
+        // per frame here rather than copying raw floats 1:1 — copying raw
+        // floats into a mono buffer interleaves L/R into consecutive mono
+        // time-slots, which sounds scrambled/muffled.
         guard let outB = outList.first,
               let outM = outB.mData else { return }
         let outFloats = outM.assumingMemoryBound(to: Float.self)
+        let channels = max(1, Int(outB.mNumberChannels))
         let outSamples = Int(outB.mDataByteSize) / MemoryLayout<Float>.size
-        let n = min(outSamples, scratchSamples)
+        let outFrames = outSamples / channels
+        let ringFrames = min(outFrames, scratchSamples / 2)
+        let n = ringFrames * 2   // stereo floats to pull from the ring
 
         var totalRead: UInt64 = 0
 
-        withUnsafeTemporaryAllocation(of: Float.self, capacity: n) { scratch in
+        withUnsafeTemporaryAllocation(of: Float.self, capacity: max(1, n)) { scratch in
             scratch.update(repeating: 0)
-            let read = ring.read(scratch.baseAddress!, count: n)
-            totalRead = UInt64(read)
+            let readFloats = n > 0 ? ring.read(scratch.baseAddress!, count: n) : 0
+            totalRead = UInt64(readFloats)
+            let readFrames = readFloats / 2
 
-            // Add (don't replace) so we mix with other apps' audio that the
-            // system mixer has already written to this buffer.
-            for f in 0..<read {
-                let s = outFloats[f] + scratch[f]
-                // Soft clip.
-                outFloats[f] = s > 1.0 ? 1.0 : (s < -1.0 ? -1.0 : s)
+            for frame in 0..<readFrames {
+                let l = scratch[frame * 2]
+                let r = scratch[frame * 2 + 1]
+                let base = frame * channels
+                if channels == 1 {
+                    add(&outFloats[base], (l + r) * 0.5)
+                } else {
+                    add(&outFloats[base], l)
+                    add(&outFloats[base + 1], r)
+                    // Extra channels (>2) on the real device are left as-is.
+                }
             }
 
-            if read < n {
-                counters[1] &+= UInt64(n - read)   // underrun
+            if readFrames < outFrames {
+                counters[1] &+= UInt64(outFrames - readFrames)   // underrun
             }
         }
         counters[0] &+= totalRead

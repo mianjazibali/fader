@@ -200,10 +200,22 @@ final class CoreAudioEngine: AudioEngine {
                 }
             }
 
-            // With Phase 3 enabled, every detected app gets per-app gain via
-            // the tap pipeline. AppleScript is still preferred when available
-            // (the in-app slider also updates) but Phase 3 covers everything.
-            let supports = gainEnabled || AppleScriptVolume.canControl(bundleID: bundleID)
+            // Apps simultaneously running mic input AND output are in a live
+            // call (voice/video). macOS silently zeroes Process Tap content
+            // for that audio (a wiretap/privacy protection, not a bug we can
+            // work around) while `CATapMutedWhenTapped` still mutes the app's
+            // real output the moment we start reading — net effect: tapping
+            // a call goes completely silent, worse than doing nothing. So we
+            // skip tap creation for these and leave their real audio path
+            // alone; the slider just goes disabled with a "—" for the call's
+            // duration (see AppRowView's `supportsVolumeControl` handling).
+            let inLiveCall = p.isRunningInput && p.isRunningOutput
+
+            // With Phase 3 enabled, every other detected app gets per-app
+            // gain via the tap pipeline. AppleScript is still preferred when
+            // available (the in-app slider also updates) but Phase 3 covers
+            // everything else.
+            let supports = !inLiveCall && (gainEnabled || AppleScriptVolume.canControl(bundleID: bundleID))
 
             let app = AudioApp(
                 id: bundleID,
@@ -225,9 +237,12 @@ final class CoreAudioEngine: AudioEngine {
         // Reconcile gain controller to the new active set — only if Phase 3
         // gain is opt-in. Without this, taps would silence the original output
         // and audibility would depend on our routing being correct.
+        // `supportsVolumeControl` is also false for apps mid-call — see the
+        // `inLiveCall` note above — so those never get a tap installed.
         if gainEnabled {
             let activeApps = state.apps.filter { $0.isActive }
-            gainController.apply(active: activeApps, processIDByBundle: processIDByBundle)
+            let tappableApps = activeApps.filter { $0.supportsVolumeControl }
+            gainController.apply(active: tappableApps, processIDByBundle: processIDByBundle)
             for app in activeApps {
                 pushGain(for: app.id)
             }
