@@ -205,6 +205,7 @@
   }
   .icon-btn:hover { background: rgba(255,255,255,0.09); color: var(--mist); }
   .icon-btn svg { width: 13px; height: 13px; }
+  .icon-btn.on { color: var(--amber); background: rgba(255,214,10,0.12); }
   .panel-divider { height: 1px; background: var(--line); }
 
   .panel-body { padding: 6px 14px 10px; }
@@ -562,6 +563,9 @@
     <div class="panel-topbar">
       <span class="label" id="demoTopLabel">Live audio detection</span>
       <span class="spacer"></span>
+      <button class="icon-btn" id="soundToggleBtn" title="Turn on demo sound" onclick="toggleDemoAudio()">
+        <svg id="soundIcon" viewBox="0 0 20 20" fill="none"><path d="M3 8v4h3l4 3V5L6 8H3z" fill="currentColor"/><path d="M13 8l4 4M17 8l-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
       <button class="icon-btn" title="Settings">
         <svg viewBox="0 0 20 20" fill="none"><path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" stroke="currentColor" stroke-width="1.6"/><path d="M16.2 12.4c.1-.4.15-.8.15-1.2s-.05-.8-.15-1.2l1.4-1a.4.4 0 00.1-.5l-1.3-2.3a.4.4 0 00-.5-.2l-1.6.6a4.9 4.9 0 00-1-.6l-.25-1.7a.4.4 0 00-.4-.3H9.4a.4.4 0 00-.4.3l-.25 1.7c-.4.15-.7.35-1 .6l-1.6-.6a.4.4 0 00-.5.2L4.35 8.5a.4.4 0 00.1.5l1.4 1c-.1.4-.15.8-.15 1.2s.05.8.15 1.2l-1.4 1a.4.4 0 00-.1.5l1.3 2.3c.1.2.3.25.5.2l1.6-.6c.3.25.65.45 1 .6l.25 1.7c.05.2.2.3.4.3h2.6a.4.4 0 00.4-.3l.25-1.7c.35-.15.7-.35 1-.6l1.6.6a.4.4 0 00.5-.2l1.3-2.3a.4.4 0 00-.1-.5l-1.4-1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
       </button>
@@ -592,7 +596,7 @@
       </div>
     </div>
   </div>
-  <p class="demo-hint">↑ That's the real app, running in your browser. Drag a slider.</p>
+  <p class="demo-hint">↑ Click the speaker icon for sound, then drag a slider.</p>
 </header>
 
 <section id="features" class="container">
@@ -771,6 +775,103 @@
   const zoomApp = { id: 'zoom', name: 'zoom.us', volume: 95, muted: false, comm: true };
   let callActive = false;
 
+  // ---- Demo audio synth ----
+  // No audio files to host or license — each "app" is a tiny generated
+  // loop (Web Audio oscillators), so dragging a slider changes something
+  // you can actually hear, live. AudioContext is only ever created inside
+  // the sound-toggle button's click handler — never on page load or a
+  // slider drag — so this respects the browser's autoplay policy and
+  // never makes noise the visitor didn't ask for.
+  let audioOn = false;
+  let audioCtx = null;
+  const appGainNodes = {};
+  const loopRunning = { spotify: false, chrome: false, zoom: false };
+
+  function ensureAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function getAppGain(id) {
+    if (!appGainNodes[id]) {
+      const g = audioCtx.createGain();
+      g.gain.value = 0;
+      g.connect(audioCtx.destination);
+      appGainNodes[id] = g;
+    }
+    return appGainNodes[id];
+  }
+  function effectiveLevel(app) {
+    if (!audioOn || app.muted) return 0;
+    const ducked = callActive && !app.comm;
+    const pct = ducked ? app.volume * 0.5 : app.volume;
+    return Math.max(0, Math.min(1, pct / 100)) * 0.55; // headroom so 3 loops together don't clip
+  }
+  function updateAllAudioGains() {
+    if (!audioCtx) return;
+    const apps = callActive ? [...demoApps, zoomApp] : [...demoApps, zoomApp].filter(a => a.id !== 'zoom');
+    apps.forEach(app => getAppGain(app.id).gain.setTargetAtTime(effectiveLevel(app), audioCtx.currentTime, 0.05));
+    if (!callActive) getAppGain('zoom').gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+  }
+  function playNote(destGain, freq, type, startTime, dur, peak) {
+    const osc = audioCtx.createOscillator();
+    const env = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    env.gain.setValueAtTime(0, startTime);
+    env.gain.linearRampToValueAtTime(peak, startTime + 0.02);
+    env.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+    osc.connect(env).connect(destGain);
+    osc.start(startTime);
+    osc.stop(startTime + dur + 0.05);
+  }
+  function scheduleSpotifyLoop() {
+    if (loopRunning.spotify) return;
+    loopRunning.spotify = true;
+    const notes = [261.63, 329.63, 392.0, 329.63, 440.0, 392.0, 329.63, 293.66];
+    let i = 0;
+    (function tick() {
+      if (!audioOn) { loopRunning.spotify = false; return; }
+      playNote(getAppGain('spotify'), notes[i++ % notes.length], 'sine', audioCtx.currentTime, 0.5, 1);
+      setTimeout(tick, 300);
+    })();
+  }
+  function scheduleChromeLoop() {
+    if (loopRunning.chrome) return;
+    loopRunning.chrome = true;
+    const notes = [523.25, 659.25, 783.99];
+    let i = 0;
+    (function tick() {
+      if (!audioOn) { loopRunning.chrome = false; return; }
+      playNote(getAppGain('chrome'), notes[i++ % notes.length], 'triangle', audioCtx.currentTime, 0.28, 1);
+      setTimeout(tick, 640);
+    })();
+  }
+  function scheduleZoomLoop() {
+    if (loopRunning.zoom) return;
+    loopRunning.zoom = true;
+    (function tick() {
+      if (!audioOn || !callActive) { loopRunning.zoom = false; return; }
+      const t = audioCtx.currentTime;
+      playNote(getAppGain('zoom'), 480, 'sine', t, 0.35, 1);
+      playNote(getAppGain('zoom'), 620, 'sine', t, 0.35, 0.8);
+      setTimeout(tick, 1200);
+    })();
+  }
+  function toggleDemoAudio() {
+    audioOn = !audioOn;
+    ensureAudioCtx();
+    const btn = document.getElementById('soundToggleBtn');
+    btn.classList.toggle('on', audioOn);
+    btn.title = audioOn ? 'Turn off demo sound' : 'Turn on demo sound';
+    if (audioOn) {
+      scheduleSpotifyLoop();
+      scheduleChromeLoop();
+      if (callActive) scheduleZoomLoop();
+    }
+    updateAllAudioGains();
+  }
+
   function speakerIcon(muted) {
     return muted
       ? '<svg viewBox="0 0 20 20" fill="none"><path d="M3 8v4h3l4 3V5L6 8H3z" fill="currentColor"/><path d="M13 8l4 4M17 8l-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
@@ -806,6 +907,7 @@
     document.getElementById('demoBanner').classList.toggle('active', callActive);
     document.getElementById('demoTopLabel').textContent = 'Live audio detection';
     document.getElementById('demoCallBtn').textContent = callActive ? '■ End the call' : '▶ Simulate joining a call';
+    updateAllAudioGains();
   }
 
   function findApp(id) {
@@ -822,6 +924,7 @@
   }
   function toggleDemoCall() {
     callActive = !callActive;
+    if (audioOn && callActive) scheduleZoomLoop();
     renderDemo();
   }
   renderDemo();
