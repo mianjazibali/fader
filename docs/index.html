@@ -161,10 +161,15 @@
     display: flex; justify-content: center;
   }
 
-  /* The panel itself stays dark/rounded — it has to look like the real
-     macOS app, which is the whole point of the demo. */
+  /* The panel itself stays dark/rounded and — critically — translucent:
+     the real app uses macOS's .ultraThinMaterial (frosted glass, not a
+     flat color), which is the whole point of the demo being a faithful
+     copy, not just a same-colored mockup. */
   .panel-mock {
-    background: var(--panel);
+    background: rgba(24,22,26,0.72);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid rgba(255,255,255,0.08);
     border-radius: 16px;
     box-shadow: 0 24px 60px rgba(23,20,15,0.18);
     width: 100%;
@@ -414,13 +419,6 @@
   }
   .amount-btn:hover { border-color: var(--accent); }
   .amount-btn.selected { background: var(--accent); border-color: var(--accent); color: var(--ink); }
-  .modal-download-status {
-    font-size: 13px; color: var(--success); margin-bottom: 8px;
-    display: flex; align-items: center; gap: 7px; font-weight: 600;
-  }
-  .modal-note {
-    font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5;
-  }
   .modal-actions { display: flex; flex-direction: column; gap: 10px; }
   .btn-support { background: var(--ink); color: var(--paper); justify-content: center; }
   .btn-support:hover { background: var(--accent); border-color: var(--accent); color: var(--ink); }
@@ -430,6 +428,19 @@
     font-family: inherit; padding: 6px; text-decoration: underline;
   }
   .modal-skip:hover { color: var(--ink); }
+
+  /* Two-phase modal: ask (support optional, never blocks downloading),
+     then — once the download actually starts — the ad-hoc-signing
+     instructions, since that's the moment they're actually relevant. */
+  .modal-phase { display: none; }
+  .modal-overlay.phase-ask .modal-phase-ask { display: block; }
+  .modal-overlay.phase-install .modal-phase-install { display: block; }
+  .install-steps-list {
+    margin: 0 0 24px; padding-left: 20px;
+    color: var(--muted); font-size: 14px; line-height: 1.7;
+  }
+  .install-steps-list strong { color: var(--ink); }
+  .modal-got-it { width: 100%; justify-content: center; }
 
   /* Mobile */
   @media (max-width: 880px) {
@@ -572,25 +583,39 @@
   </div>
 </footer>
 
-<!-- Support modal — shown right after the download starts -->
+<!-- Download flow modal — two phases. Ask first (support is optional,
+     downloading is never gated on it); once download actually starts,
+     swap to the ad-hoc-signing instructions, since that's the moment
+     they're relevant, not before. Both download buttons share this. -->
 <div class="modal-overlay" id="supportModal">
   <div class="modal-card">
     <button class="modal-close" onclick="closeSupportModal()">✕</button>
-    <span class="modal-emoji">☕</span>
-    <h3>Enjoying Fader already?</h3>
-    <p class="modal-body">It's free and always will be. If it just saved you from one more blasted notification mid-call, a small tip keeps it maintained — and me caffeinated for the next bug fix.</p>
-    <div class="modal-download-status">
-      <span>✓</span><span>Fader.dmg is downloading…</span>
+
+    <div class="modal-phase modal-phase-ask">
+      <span class="modal-emoji">☕</span>
+      <h3>Enjoying Fader already?</h3>
+      <p class="modal-body">It's free and always will be — downloading never depends on this. But if it saves you from one more blasted notification mid-call, a small tip keeps it maintained and me caffeinated for the next bug fix.</p>
+      <div class="amount-row">
+        <button class="amount-btn" data-amount="3" onclick="selectAmount(3)">€3</button>
+        <button class="amount-btn selected" data-amount="5" onclick="selectAmount(5)">€5</button>
+        <button class="amount-btn" data-amount="10" onclick="selectAmount(10)">€10</button>
+      </div>
+      <div class="modal-actions">
+        <a class="btn btn-support" id="supportBtn" href="https://buymeacoffee.com/mianjazibali?amount=5" target="_blank" rel="noopener" onclick="beginDownload()">Support with €5 &amp; download</a>
+        <button class="modal-skip" onclick="beginDownload()">No thanks, just download</button>
+      </div>
     </div>
-    <p class="modal-note">First launch: right-click the app in Applications → Open. It's ad-hoc signed, not notarized, so a plain double-click gets blocked once.</p>
-    <div class="amount-row">
-      <button class="amount-btn" data-amount="3" onclick="selectAmount(3)">€3</button>
-      <button class="amount-btn selected" data-amount="5" onclick="selectAmount(5)">€5</button>
-      <button class="amount-btn" data-amount="10" onclick="selectAmount(10)">€10</button>
-    </div>
-    <div class="modal-actions">
-      <a class="btn btn-support" id="supportBtn" href="https://buymeacoffee.com/mianjazibali?amount=5" target="_blank" rel="noopener" onclick="closeSupportModal()">Support with €5</a>
-      <button class="modal-skip" onclick="closeSupportModal()">No thanks, just take me to the download</button>
+
+    <div class="modal-phase modal-phase-install">
+      <span class="modal-emoji">📦</span>
+      <h3>Fader.dmg is downloading</h3>
+      <p class="modal-body">One extra step on first launch — Fader is signed ad-hoc, not with a paid Apple Developer ID, so a plain double-click gets blocked once:</p>
+      <ol class="install-steps-list">
+        <li>Open <strong>Fader.dmg</strong> and drag Fader into <strong>Applications</strong>.</li>
+        <li><strong>Right-click</strong> Fader in Applications and choose <strong>Open</strong>.</li>
+        <li>Confirm in the dialog that appears — you only need to do this once.</li>
+      </ol>
+      <button class="btn btn-primary modal-got-it" onclick="closeSupportModal()">Got it</button>
     </div>
   </div>
 </div>
@@ -798,17 +823,28 @@
   const DMG_URL = 'https://github.com/mianjazibali/fader/releases/latest/download/Fader.dmg';
   let selectedAmount = 5;
 
+  // Both download buttons call this — it opens the ask phase, it does
+  // NOT download yet. Downloading only ever happens from inside the
+  // modal (either path), so the ask always comes first, but neither
+  // path can block the download itself.
   function startDownload() {
+    const modal = document.getElementById('supportModal');
+    modal.classList.remove('phase-install');
+    modal.classList.add('phase-ask', 'open');
+  }
+  // Called by BOTH modal buttons (support, and "no thanks") — the actual
+  // file download, then swap to the ad-hoc-signing instructions, since
+  // that's the moment they're relevant, not before.
+  function beginDownload() {
     const a = document.createElement('a');
     a.href = DMG_URL;
     a.download = 'Fader.dmg';
     document.body.appendChild(a);
     a.click();
     a.remove();
-    openSupportModal();
-  }
-  function openSupportModal() {
-    document.getElementById('supportModal').classList.add('open');
+    const modal = document.getElementById('supportModal');
+    modal.classList.remove('phase-ask');
+    modal.classList.add('phase-install');
   }
   function closeSupportModal() {
     document.getElementById('supportModal').classList.remove('open');
@@ -819,7 +855,7 @@
       btn.classList.toggle('selected', parseInt(btn.dataset.amount, 10) === amount);
     });
     const btn = document.getElementById('supportBtn');
-    btn.textContent = 'Support with €' + amount;
+    btn.textContent = 'Support with €' + amount + ' & download';
     btn.href = 'https://buymeacoffee.com/mianjazibali?amount=' + amount;
   }
   document.getElementById('supportModal').addEventListener('click', (e) => {
