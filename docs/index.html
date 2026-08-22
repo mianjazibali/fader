@@ -909,11 +909,14 @@
   renderDemo();
 
   // ---- Download + support modal ----
-  // Evergreen URL (works across releases with zero site changes) — the
-  // actual filename the browser saves it as is set separately below via
-  // `download`, and DOES need bumping alongside each release.
-  const DMG_URL = 'https://github.com/mianjazibali/fader/releases/latest/download/Fader.dmg';
-  const APP_VERSION = '2.0.2';
+  // The `download` attribute's custom filename is silently ignored by
+  // every browser for cross-origin links (our site -> github.com is
+  // cross-origin), so setting it to a versioned name did nothing in
+  // practice — only the URL's own filename, which GitHub echoes back via
+  // Content-Disposition, actually controls what gets saved. APP_VERSION
+  // needs bumping alongside each release either way.
+  const APP_VERSION = '2.0.0';
+  const DMG_URL = 'https://github.com/mianjazibali/fader/releases/latest/download/Fader-' + APP_VERSION + '.dmg';
 
   // Both download buttons call this — it opens the ask phase, it does
   // NOT download yet. Downloading only ever happens from inside the

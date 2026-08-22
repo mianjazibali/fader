@@ -169,7 +169,7 @@ struct FaderApp: App {
         MenuBarExtra {
             ControlCenterView(engine: engine)
         } label: {
-            MenuBarLabel(state: engine.state)
+            MenuBarLabel()
         }
         .menuBarExtraStyle(.window)
     }
@@ -180,8 +180,6 @@ struct FaderApp: App {
 /// not switch to a speaker glyph based on state because users found it
 /// confusing.
 struct MenuBarLabel: View {
-    @Bindable var state: AudioState
-
     var body: some View {
         // A live SwiftUI Shape here (the original approach) renders fine
         // everywhere else — the in-app header badge, every preview
@@ -193,22 +191,28 @@ struct MenuBarLabel: View {
         // same glyph as a real template NSImage (exactly how every SF
         // Symbol already works under the hood) sidesteps whatever that
         // rasterization gap is.
-        Image(nsImage: state.apps.contains(where: { $0.isActive }) ? Self.activeIcon : Self.inactiveIcon)
+        //
+        // Always full opacity — a dimmed "inactive" variant (55% alpha)
+        // used to stand in for apps-playing state, but a template image's
+        // alpha directly controls how solid/white it renders once AppKit
+        // re-tints it, so the idle state (the one you see most of the
+        // time) looked visibly washed out next to every other, fully
+        // opaque menu bar icon.
+        Image(nsImage: Self.icon)
     }
 
-    private static let activeIcon = makeIcon(alpha: 1.0)
-    private static let inactiveIcon = makeIcon(alpha: 0.55)
+    private static let icon = makeIcon()
 
     /// Same glyph as `FaderMark`/the website's mark, drawn directly with
     /// NSBezierPath instead of a SwiftUI Path, and marked `isTemplate`
     /// so AppKit re-tints it for light/dark menu bars and the
     /// highlighted (menu-open) state automatically.
-    private static func makeIcon(alpha: CGFloat) -> NSImage {
+    private static func makeIcon() -> NSImage {
         let size = NSSize(width: 16, height: 16)
         let image = NSImage(size: size, flipped: true) { rect in
-            NSColor.black.withAlphaComponent(alpha).setStroke()
+            NSColor.black.setStroke()
             let path = NSBezierPath()
-            path.lineWidth = 1.6
+            path.lineWidth = 1.8
             path.lineCapStyle = .round
             let scale = min(rect.width, rect.height) / 16
             let bars: [(x: CGFloat, y1: CGFloat, y2: CGFloat)] = [
