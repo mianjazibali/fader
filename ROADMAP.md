@@ -25,9 +25,15 @@ investment.
 - Menu bar icon always opens to the main screen, never the last-viewed
   one
 - App icon: SVG → ICNS pipeline
-- Menu bar glyph is a real vector shape matching the website's mark
-  exactly (`FaderMark`), not an SF Symbol standing in for it — same
-  glyph in the menu bar, the in-app header badge, and on the site
+- Menu bar glyph matches the website's mark exactly, not an SF Symbol
+  standing in for it — same glyph in the menu bar, the in-app header
+  badge, and on the site. The in-app badge draws it live as a SwiftUI
+  Shape (`FaderMark`); the actual `NSStatusItem` draws a separately
+  pre-rendered template `NSImage` of the same glyph instead — a live
+  Shape there reserved its status-item slot correctly but rendered
+  completely blank, a real gap between MenuBarExtra's declared label
+  and what the real menu bar (as opposed to every preview/screenshot)
+  actually rasterizes
 
 ### Phase 2 — Live detection (done)
 - `kAudioHardwarePropertyProcessObjectList` enumeration

@@ -183,11 +183,45 @@ struct MenuBarLabel: View {
     @Bindable var state: AudioState
 
     var body: some View {
-        FaderMark()
-            .stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
-            .frame(width: 15, height: 15)
-            // Subtle visual cue when any app is producing output, without
-            // changing the icon's silhouette.
-            .foregroundStyle(state.apps.contains(where: { $0.isActive }) ? .primary : .secondary)
+        // A live SwiftUI Shape here (the original approach) renders fine
+        // everywhere else — the in-app header badge, every preview
+        // screenshot taken this session — but reliably came out as a
+        // blank status item in the real menu bar: the NSStatusItem
+        // reserved its slot correctly (confirmed via Control Center's own
+        // status-item logs — the scene registers and reconnects with no
+        // errors), the *content* just never rasterized. Pre-rendering the
+        // same glyph as a real template NSImage (exactly how every SF
+        // Symbol already works under the hood) sidesteps whatever that
+        // rasterization gap is.
+        Image(nsImage: state.apps.contains(where: { $0.isActive }) ? Self.activeIcon : Self.inactiveIcon)
+    }
+
+    private static let activeIcon = makeIcon(alpha: 1.0)
+    private static let inactiveIcon = makeIcon(alpha: 0.55)
+
+    /// Same glyph as `FaderMark`/the website's mark, drawn directly with
+    /// NSBezierPath instead of a SwiftUI Path, and marked `isTemplate`
+    /// so AppKit re-tints it for light/dark menu bars and the
+    /// highlighted (menu-open) state automatically.
+    private static func makeIcon(alpha: CGFloat) -> NSImage {
+        let size = NSSize(width: 16, height: 16)
+        let image = NSImage(size: size, flipped: true) { rect in
+            NSColor.black.withAlphaComponent(alpha).setStroke()
+            let path = NSBezierPath()
+            path.lineWidth = 1.6
+            path.lineCapStyle = .round
+            let scale = min(rect.width, rect.height) / 16
+            let bars: [(x: CGFloat, y1: CGFloat, y2: CGFloat)] = [
+                (3, 12, 4), (8, 13, 3), (13, 10, 6)
+            ]
+            for bar in bars {
+                path.move(to: NSPoint(x: bar.x * scale, y: bar.y1 * scale))
+                path.line(to: NSPoint(x: bar.x * scale, y: bar.y2 * scale))
+            }
+            path.stroke()
+            return true
+        }
+        image.isTemplate = true
+        return image
     }
 }
