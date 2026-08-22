@@ -43,9 +43,13 @@ enum AppleScriptVolume {
         let result = NSAppleScript(source: script)?.executeAndReturnError(&error)
         if let err = error {
             let code = (err[NSAppleScript.errorNumber] as? Int) ?? 0
+            Self.lastErrorCode = code
+            Self.lastError = "AppleScript error \(code) probing \(bundleID)"
             FileHandle.standardError.write(Data("[AppleScriptVolume] probe failed for \(bundleID): code \(code)\n".utf8))
             return false
         }
+        Self.lastErrorCode = nil
+        Self.lastError = nil
         FileHandle.standardError.write(Data("[AppleScriptVolume] probe ok for \(bundleID): vol=\(result?.int32Value ?? -1)\n".utf8))
         return true
     }
@@ -116,6 +120,13 @@ enum AppleScriptVolume {
     /// a "permission required" hint. Atomic-style read/write since multiple
     /// detached tasks may set it.
     static private(set) nonisolated(unsafe) var lastError: String?
+    static private(set) nonisolated(unsafe) var lastErrorCode: Int?
+
+    /// -1743 is macOS's fixed error number for "not authorized to send
+    /// Apple events to X" — i.e. the user hasn't granted (or has denied)
+    /// Automation permission for this specific target app. Any other code
+    /// is a real script error, not a permission problem.
+    static var isAutomationPermissionDenied: Bool { lastErrorCode == -1743 }
 
     /// Run synchronously (caller is on a detached task already).
     private static func runSync(_ source: String) {
@@ -127,10 +138,12 @@ enum AppleScriptVolume {
             let msg  = (err[NSAppleScript.errorMessage] as? String) ?? "unknown"
             let summary = "AppleScript error \(code): \(msg)"
             Self.lastError = summary
+            Self.lastErrorCode = code
             FileHandle.standardError.write(Data("[AppleScriptVolume] \(summary)\n".utf8))
             FileHandle.standardError.write(Data("[AppleScriptVolume] → grant via System Settings → Privacy & Security → Automation → Fader → enable target app\n".utf8))
         } else {
             Self.lastError = nil
+            Self.lastErrorCode = nil
         }
     }
 

@@ -11,6 +11,7 @@ import CoreAudio
 final class CoreAudioEngine: AudioEngine {
     let state = AudioState()
     let gainController = AudioGainController()
+    private let volumeStore = VolumeStore()
 
     /// Phase 3 (per-app tap → ring buffer → playback) is on by default.
     /// Pass `--no-gain` to disable for debugging Phase 2 detection in isolation.
@@ -36,6 +37,15 @@ final class CoreAudioEngine: AudioEngine {
     /// bundle. While < 1.5s old, the external poll skips that app so its
     /// stale reads can't overwrite the user's drag.
     private var lastUserWriteTime: [String: Date] = [:]
+
+    /// When each currently-tapped bundle's level last read as silent.
+    /// System-audio-capture TCC denial is invisible to every CoreAudio
+    /// status code — the tap's buffers just stay zero forever — so this is
+    /// the only real signal: a bundle with an installed tap whose level
+    /// hasn't shown *any* signal for several seconds while genuinely
+    /// active is almost certainly not actually being captured.
+    private var silentSinceByBundle: [String: Date] = [:]
+    private let silenceBlockedThreshold: TimeInterval = 6.0
 
     func start() async throws {
         let det = AudioProcessDetector { [weak self] processes in
@@ -94,7 +104,20 @@ final class CoreAudioEngine: AudioEngine {
 
                     if abs(app.volume - observed) > 0.015 {
                         self.state.setVolume(observed, for: bundleID)
+                        // Also persist volume changes made through the app's
+                        // OWN controls (e.g. Music's own slider), not just
+                        // ones dragged in Fader — either way it's now the
+                        // user's chosen level for next launch.
+                        self.persistVolume(for: bundleID)
                     }
+                }
+
+                // AppleScript error -1743 ("not authorized to send Apple
+                // events") is a real, non-silent signal, unlike system
+                // audio capture's TCC gate — just surface it directly.
+                let denied = AppleScriptVolume.isAutomationPermissionDenied
+                if self.state.automationPermissionDenied != denied {
+                    self.state.automationPermissionDenied = denied
                 }
             }
         }
@@ -118,6 +141,7 @@ final class CoreAudioEngine: AudioEngine {
         // Block external-volume poll for this bundle briefly so a stale read
         // can't undo the user's drag before our AppleScript write lands.
         lastUserWriteTime[appId] = Date()
+        persistVolume(for: appId)
 
         if AppleScriptVolume.canControl(bundleID: appId) {
             AppleScriptVolume.setVolume(value, for: appId)
@@ -128,10 +152,16 @@ final class CoreAudioEngine: AudioEngine {
         state.setMuted(muted, for: appId)
         pushGain(for: appId)
         lastUserWriteTime[appId] = Date()
+        persistVolume(for: appId)
         if AppleScriptVolume.canControl(bundleID: appId),
            let app = state.apps.first(where: { $0.id == appId }) {
             AppleScriptVolume.setMuted(muted, for: appId, restoreTo: app.volume)
         }
+    }
+
+    private func persistVolume(for appId: String) {
+        guard let app = state.apps.first(where: { $0.id == appId }) else { return }
+        volumeStore.update(bundleID: appId, volume: app.volume, isMuted: app.isMuted)
     }
 
     func resyncAllGains() {
@@ -223,8 +253,8 @@ final class CoreAudioEngine: AudioEngine {
                 category: category,
                 pid: p.pid,
                 icon: existing?.icon ?? running?.icon ?? Self.iconForBundle(bundleID),
-                volume: existing?.volume ?? 1.0,
-                isMuted: existing?.isMuted ?? false,
+                volume: existing?.volume ?? volumeStore.entry(for: bundleID)?.volume ?? 1.0,
+                isMuted: existing?.isMuted ?? volumeStore.entry(for: bundleID)?.isMuted ?? false,
                 isActive: active,
                 levelMeter: existing?.levelMeter ?? 0,
                 supportsVolumeControl: supports
@@ -253,6 +283,39 @@ final class CoreAudioEngine: AudioEngine {
         guard let app = state.apps.first(where: { $0.id == bundleID }) else { return }
         let effective = state.effectiveVolume(for: app)
         gainController.setGain(forBundle: bundleID, effective: effective)
+    }
+
+    /// Behavioral system-audio-capture health check — see the
+    /// `silentSinceByBundle` doc comment for why this can't be a status
+    /// code check. Only bundles with an actually-installed tap
+    /// (`hasSlot`) count, so "no tap yet" (still installing, or genuinely
+    /// failed for an unrelated reason already logged elsewhere) can't be
+    /// mistaken for "tap installed but TCC is silently dropping it."
+    private func updateCaptureHealthCheck() {
+        guard gainEnabled else { return }
+        let tapped = state.apps.filter { $0.isActive && gainController.hasSlot(forBundle: $0.id) }
+
+        let now = Date()
+        var stillTracked: Set<String> = []
+        for app in tapped {
+            stillTracked.insert(app.id)
+            let raw = gainController.level(forBundle: app.id)
+            if raw > 0.001 {
+                silentSinceByBundle.removeValue(forKey: app.id)
+            } else if silentSinceByBundle[app.id] == nil {
+                silentSinceByBundle[app.id] = now
+            }
+        }
+        // Bundles that stopped being tapped (quit, paused, tap torn down)
+        // shouldn't keep contributing a stale timer.
+        silentSinceByBundle = silentSinceByBundle.filter { stillTracked.contains($0.key) }
+
+        let blocked = silentSinceByBundle.values.contains {
+            now.timeIntervalSince($0) > silenceBlockedThreshold
+        }
+        if state.systemAudioCaptureLikelyBlocked != blocked {
+            state.systemAudioCaptureLikelyBlocked = blocked
+        }
     }
 
     private static func fallbackName(for bundleID: String) -> String {
@@ -290,6 +353,7 @@ final class CoreAudioEngine: AudioEngine {
     private func tickPulse() {
         let hasActive = state.apps.contains(where: { $0.isActive })
         let hasMovingMeter = state.apps.contains(where: { $0.levelMeter > 0.001 })
+        updateCaptureHealthCheck()
         guard hasActive || hasMovingMeter else { return }
 
         for i in state.apps.indices {

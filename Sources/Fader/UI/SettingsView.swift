@@ -35,8 +35,26 @@ struct SettingsView: View {
                     .opacity(state.duckingEnabled ? 1 : 0.5)
                 }
 
+                section(title: "Permissions", icon: "hand.raised") {
+                    PermissionRow(
+                        label: "System audio capture",
+                        detail: "Lets Fader read and adjust each app's audio. Required for every app except Music, Spotify, TV, and Podcasts.",
+                        isOK: !state.systemAudioCaptureLikelyBlocked,
+                        problemDetail: "A tapped app has stayed silent — capture may not be permitted.",
+                        permission: .systemAudioCapture
+                    )
+                    Divider().padding(.vertical, 2)
+                    PermissionRow(
+                        label: "Automation",
+                        detail: "Lets Fader also move Music, Spotify, TV, and Podcasts' own volume sliders to match.",
+                        isOK: !state.automationPermissionDenied,
+                        problemDetail: "Not granted for at least one app.",
+                        permission: .automation
+                    )
+                }
+
                 section(title: "About", icon: "sparkles") {
-                    InfoLine(label: "Version", value: "0.2.0")
+                    InfoLine(label: "Version", value: "0.3.0")
 
                     Link(destination: URL(string: "https://github.com/mianjazibali/fader/issues/new/choose")!) {
                         HStack(spacing: 4) {
@@ -114,6 +132,52 @@ private struct InfoLine: View {
             Text(label).font(.system(size: 11)).foregroundStyle(.secondary)
             Spacer()
             Text(value).font(.system(size: 11, weight: .medium))
+        }
+    }
+}
+
+/// One row in the Permissions section. Neither of Fader's two runtime
+/// permissions can be queried directly (see AudioState's doc comment), so
+/// `isOK` reflects a best-effort behavioral read, not a hard guarantee —
+/// the copy stays hedged ("may not be permitted") rather than asserting a
+/// definite denial.
+private struct PermissionRow: View {
+    let label: String
+    let detail: String
+    let isOK: Bool
+    let problemDetail: String
+    let permission: PermissionsManager.Permission
+
+    private let manager = PermissionsManager()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: isOK ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(isOK ? .green : .orange)
+                Text(label)
+                    .font(.system(size: 12, weight: .semibold))
+                Spacer()
+                if !isOK {
+                    Button("Open Settings") {
+                        manager.openSystemSettings(for: permission)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tint)
+                }
+            }
+            Text(detail)
+                .font(.system(size: 10.5))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if !isOK {
+                Text(problemDetail)
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }

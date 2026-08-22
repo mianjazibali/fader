@@ -7,11 +7,15 @@ import AppKit
 @MainActor
 final class PermissionsManager {
     enum Permission: String, CaseIterable {
-        case accessibility   // for global hotkeys (AppKit-only path)
+        case accessibility      // for global hotkeys (AppKit-only path)
+        case automation         // AppleScript control of Music/Spotify/etc.
+        case systemAudioCapture // Process Tap per-app audio capture (TCC, macOS 14.4+)
 
         var humanLabel: String {
             switch self {
-            case .accessibility: return "Accessibility (for global hotkeys)"
+            case .accessibility:      return "Accessibility (for global hotkeys)"
+            case .automation:         return "Automation"
+            case .systemAudioCapture: return "Screen & System Audio Recording"
             }
         }
     }
@@ -20,6 +24,11 @@ final class PermissionsManager {
         switch permission {
         case .accessibility:
             return AXIsProcessTrusted()
+        case .automation, .systemAudioCapture:
+            // Neither has a synchronous "check without prompting" API — see
+            // AudioState's behavioral detection (real silence / AppleScript
+            // error -1743) for how these are actually inferred at runtime.
+            return true
         }
     }
 
@@ -30,6 +39,11 @@ final class PermissionsManager {
             // Avoid the global-var Sendable warning by using the literal key.
             let opts: NSDictionary = ["AXTrustedCheckOptionPrompt": true]
             _ = AXIsProcessTrustedWithOptions(opts)
+        case .automation, .systemAudioCapture:
+            // Both are prompted implicitly the first time Fader actually
+            // uses them (an AppleScript send, or starting the capture
+            // IOProc) — there's no separate explicit-request call.
+            break
         }
     }
 
@@ -38,6 +52,12 @@ final class PermissionsManager {
             switch permission {
             case .accessibility:
                 return URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+            case .automation:
+                return URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
+            case .systemAudioCapture:
+                // Same pane Apple renamed "Screen Recording" to "Screen &
+                // System Audio Recording" in — the URL fragment stayed put.
+                return URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
             }
         }()
         if let url { NSWorkspace.shared.open(url) }

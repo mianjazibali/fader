@@ -76,6 +76,14 @@ private struct MainPanel: View {
         let visibleApps = state.apps.filter { $0.isActive || $0.hasCustomSettings }
 
         VStack(spacing: 0) {
+            if !state.permissionBannerDismissed,
+               state.systemAudioCaptureLikelyBlocked || state.automationPermissionDenied {
+                PermissionBanner(state: state)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
             if state.duckingEnabled && state.isAnyCommunicationActive {
                 AutoLowerBanner(amount: state.duckingAmount)
                     .padding(.horizontal, 12)
@@ -192,6 +200,56 @@ private struct HeaderView: View {
         let active = state.apps.filter { $0.isActive }.count
         if active == 0 { return "No audio playing" }
         return "\(active) app\(active == 1 ? "" : "s") playing"
+    }
+}
+
+private struct PermissionBanner: View {
+    @Bindable var state: AudioState
+    private let manager = PermissionsManager()
+
+    private var permission: PermissionsManager.Permission {
+        state.systemAudioCaptureLikelyBlocked ? .systemAudioCapture : .automation
+    }
+
+    private var message: String {
+        state.systemAudioCaptureLikelyBlocked
+            ? "A tapped app has stayed silent — Fader may need System Audio Recording access."
+            : "Automation isn't granted for at least one app — its slider won't move the app's own volume."
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(message)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 12) {
+                    Button("Open Settings") { manager.openSystemSettings(for: permission) }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(.orange)
+                    Button("Not now") { state.permissionBannerDismissed = true }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(.orange.opacity(0.14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(.orange.opacity(0.30), lineWidth: 0.5)
+                )
+        )
     }
 }
 

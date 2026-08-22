@@ -25,6 +25,9 @@ investment.
 - Menu bar icon always opens to the main screen, never the last-viewed
   one
 - App icon: SVG → ICNS pipeline
+- Menu bar glyph is a real vector shape matching the website's mark
+  exactly (`FaderMark`), not an SF Symbol standing in for it — same
+  glyph in the menu bar, the in-app header badge, and on the site
 
 ### Phase 2 — Live detection (done)
 - `kAudioHardwarePropertyProcessObjectList` enumeration
@@ -73,6 +76,29 @@ investment.
   the first over the same taps
 - Crash-safe: signal handler restores default output (legacy from when
   we changed it; still installed as cheap safety net)
+- **Volume persistence** — per-app volume + mute state saved to
+  `UserDefaults` (debounced writes), restored the next time that app is
+  seen, whether the change came from Fader's own slider or the app's
+  own native volume control
+- **Permissions onboarding** — neither Automation nor system-audio-capture
+  TCC status has a synchronous "check without prompting" API (the
+  latter's denial is completely silent — every CoreAudio call still
+  returns `noErr`, the tap's buffers just stay zero), so both are
+  inferred behaviorally: AppleScript's real `-1743` error for
+  Automation, and sustained silence on an installed, active tap for
+  audio capture. Surfaced as a dismissible in-app banner plus a
+  permanent status row (with a direct System Settings link) in Settings
+- **Smoother active-set changes** — switching which apps are tapped now
+  only rebuilds the capture side (taps + aggregate device); the ring
+  buffer and the playback IOProc actually wired to the speakers stay
+  running throughout, so adding/removing a tapped app no longer causes
+  an audible stop/restart on the output path. Live-verified with two
+  simultaneous tapped apps (add and remove, in both orders) via
+  `--debug` stats. Short of true in-place tap add/remove (mutating a
+  running aggregate's tap list instead of recreating it) — that's a
+  real CoreAudio property (`kAudioAggregateDevicePropertyTapList`) but
+  under-documented and under-tested enough to be its own follow-up
+  rather than something to land blind on the daily-driver build
 
 ### Fork fixes (done)
 - **Headphone/Bluetooth hot-swap** — listens for
@@ -135,7 +161,6 @@ investment.
 | **Mute click suppression** — fade gain over 5–10 ms instead of instant 0 (avoids audible click on fast transitions) | low | medium |
 | **Row entry/exit animations** — already partially present, could be smoother | low | low |
 | **Settings panel expansion** — auto-lower attack/release sliders, output-device picker | low | medium |
-| **Custom monochrome menu bar icon** asset matching the bundle icon at 16/32 px (currently SF Symbol `slider.vertical.3`) | low | low |
 
 ---
 
@@ -144,12 +169,10 @@ investment.
 | Task | Effort | Value |
 |---|---|---|
 | **Global hotkeys** — system-wide volume cmd+up/down with Accessibility permission | medium | high |
-| **Persistence** — remember per-app volumes across launches via `UserDefaults`, restore on app re-launch | medium | high |
 | **Auto-launch at login** via `SMAppService.mainApp` | low-med | medium |
-| **Permissions UI** — proper in-app onboarding for AppleScript Automation + System Audio Capture (currently silent failures with log messages) | medium | high |
 | **Multiple output device support** — explicit picker, per-app routing | medium-high | medium |
 | **App allowlist** — let user choose which apps Fader controls (not auto-tap everything) | medium | low-med |
-| **Tap re-creation strategy** — current design tears down + rebuilds the entire aggregate when the active set changes; smoother to add/remove taps in place | medium | medium |
+| **True in-place tap add/remove** — mutate a running aggregate's `kAudioAggregateDevicePropertyTapList` instead of recreating the aggregate on every active-set change. The *playback* side (ring buffer + output IOProc) no longer rebuilds at all — see Phase 3 — this would remove the remaining *capture*-side rebuild too | medium-high | medium |
 | **Crash diagnostics** — symbolicated reports, optional opt-in | medium | low |
 
 ---

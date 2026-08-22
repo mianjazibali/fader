@@ -123,6 +123,14 @@ make dmg             # build a distributable Fader.dmg (Applications symlink inc
   slider. macOS will prompt "Fader wants to control X" on first contact.
 - **System Audio Capture (TCC)** — Process Taps require an explicit grant
   on macOS 14.4+. The privacy string is in `Info.plist`.
+- **In-app permissions status** — Settings shows a live status row for
+  both, with a direct System Settings link if either isn't working.
+  Neither permission exposes a synchronous "check without prompting"
+  API — Automation denial is inferred from AppleScript's real `-1743`
+  error, and audio-capture denial (which is otherwise completely
+  silent — CoreAudio returns `noErr` either way, the tap's buffers just
+  stay zero) is inferred from a tapped, active app staying silent for
+  several seconds.
 - **No microphone permission requested, ever.** Fader will trigger macOS's
   *purple* system-audio/screen-recording indicator while running — that's
   the correct category for Process Taps, not a bug. It will never trigger

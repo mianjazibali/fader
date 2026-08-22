@@ -16,6 +16,26 @@ import AppKit
 /// target their normal output. Tapped apps' direct path is silenced via
 /// `CATapMutedWhenTapped`; we route their audio back through our gain
 /// pipeline. Non-tapped apps go straight through unchanged.
+///
+/// Active-set changes (an app starts/stops playing) rebuild the CAPTURE
+/// side only — new `ProcessTap`s + a new aggregate device for the current
+/// active set. The ring buffer and `PlaybackDevice` — what's actually
+/// wired to the speakers — deliberately stay running across that rebuild
+/// instead of being torn down and recreated too. A capture-side gap just
+/// means the ring buffer briefly underflows (silence from the tapped-audio
+/// contribution for a few ms, already-handled the same way an underrun
+/// during steady state is), rather than the output device itself
+/// stopping and restarting, which is the audible pop/glitch this used to
+/// cause. Playback only gets torn down when the output DEVICE itself
+/// changes (`rebuildForDeviceChange`) or when there's nothing left to
+/// capture at all (`teardown`, `shutdown`).
+///
+/// This stops short of true in-place tap add/remove (mutating a running
+/// aggregate's `kAudioAggregateDevicePropertyTapList` instead of
+/// recreating it) — that path exists in CoreAudio but is under-documented
+/// and under-tested enough that getting it wrong risks the realtime
+/// callback reading a stale buffer-list layout. Decoupling playback
+/// captures most of the actual audible benefit for a lot less risk.
 @MainActor
 final class AudioGainController {
     enum InstallState: Equatable {
@@ -34,6 +54,12 @@ final class AudioGainController {
     private var ringBuffer: FloatRingBuffer?
     private var lastActiveBundles: Set<String> = []
     private var statsTask: Task<Void, Never>?
+
+    /// Which physical output device `playbackDevice` is currently bound
+    /// to — lets `installTaps` tell "just the active app set changed"
+    /// (leave playback alone) apart from "the output device itself
+    /// changed" (must rebind playback too).
+    private var currentOutputDeviceID: AudioObjectID?
 
     /// Remembered so a default-output-device change (headphones/Bluetooth
     /// plug/unplug) can force a rebuild even when the active app set hasn't
@@ -75,9 +101,10 @@ final class AudioGainController {
         log("active set changed: [\(bundles.sorted().joined(separator: ", "))]")
         lastActiveBundles = bundles
 
-        teardown()
-
         guard !active.isEmpty else {
+            // Nothing left to capture — full teardown, playback included,
+            // rather than leaving an idle IOProc running for no reason.
+            teardown()
             state = .idle
             return
         }
@@ -103,6 +130,14 @@ final class AudioGainController {
     /// live call, which is never tapped — see CoreAudioEngine).
     func level(forBundle bundleID: String) -> Float {
         slotByBundle[bundleID]?.level ?? 0
+    }
+
+    /// True once a tap has actually been installed for this bundle — lets
+    /// callers tell "no tap yet" apart from "tap installed but reading
+    /// zero," which is exactly the shape of a silent TCC denial (see
+    /// AudioState.systemAudioCaptureLikelyBlocked).
+    func hasSlot(forBundle bundleID: String) -> Bool {
+        slotByBundle[bundleID] != nil
     }
 
     func shutdown() {
@@ -139,6 +174,15 @@ final class AudioGainController {
         }
         log("default output device: \(outputDeviceID) UID=\(outputUID)")
 
+        // Tear down only the previous CAPTURE side (old taps + old
+        // aggregate) — the ring buffer and playback IOProc are deliberately
+        // left running across this; see the class doc comment for why.
+        captureDevice?.stop()
+        captureDevice = nil
+        taps.forEach { $0.dispose() }
+        taps.removeAll()
+        slotByBundle.removeAll()
+
         var newTaps: [ProcessTap] = []
         var bundleOrder: [String] = []
         for app in active {
@@ -156,8 +200,16 @@ final class AudioGainController {
             throw AggregateError.creationFailed(status: kAudioHardwareUnsupportedOperationError)
         }
 
-        // Ring buffer: ~85ms of audio @ 48kHz stereo gives plenty of slack.
-        let ring = FloatRingBuffer(requestedCapacity: 8192)
+        // Reuse the existing ring buffer across a capture-only rebuild —
+        // only allocate a fresh one the first time, or after a full
+        // teardown. ~85ms of audio @ 48kHz stereo gives plenty of slack.
+        let ring: FloatRingBuffer
+        if let existing = ringBuffer {
+            ring = existing
+        } else {
+            ring = FloatRingBuffer(requestedCapacity: 8192)
+            ringBuffer = ring
+        }
 
         let capture = try AggregateOutputDevice(
             outputDeviceUID: outputUID,
@@ -180,20 +232,27 @@ final class AudioGainController {
         try capture.start()
         log("capture device started: aggID=\(capture.aggregateID)")
 
-        let playback = PlaybackDevice(deviceID: outputDeviceID, ringBuffer: ring)
-        try playback.start()
-        log("playback device started on deviceID=\(outputDeviceID)")
+        // Only (re)bind playback when it isn't running yet, or when the
+        // output device itself changed — a mere active-app-set change
+        // must not touch it at all.
+        if playbackDevice == nil || currentOutputDeviceID != outputDeviceID {
+            playbackDevice?.stop()
+            let playback = PlaybackDevice(deviceID: outputDeviceID, ringBuffer: ring)
+            try playback.start()
+            playbackDevice = playback
+            currentOutputDeviceID = outputDeviceID
+            log("playback device (re)started on deviceID=\(outputDeviceID)")
+        }
 
         self.taps = newTaps
         self.captureDevice = capture
-        self.playbackDevice = playback
-        self.ringBuffer = ring
         self.slotByBundle = Dictionary(uniqueKeysWithValues: zip(bundleOrder, capture.gainSlots))
     }
 
     private func teardown() {
         playbackDevice?.stop()
         playbackDevice = nil
+        currentOutputDeviceID = nil
         captureDevice?.stop()
         captureDevice = nil
         ringBuffer?.reset()

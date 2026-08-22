@@ -13,6 +13,19 @@ final class AudioState {
     /// Center, same as any other app).
     var systemVolume: Float = 1.0
 
+    /// Behaviorally-inferred permission problems (see CoreAudioEngine) —
+    /// neither Automation nor system-audio-capture TCC status can be
+    /// queried directly, so both are detected from what actually happens
+    /// (an AppleScript -1743 error; a tapped app staying silent). Surfaced
+    /// as a dismissible banner + a status row in Settings, not a hard gate.
+    var automationPermissionDenied: Bool = false
+    var systemAudioCaptureLikelyBlocked: Bool = false
+    /// "Not now" on the main-panel banner — resets on relaunch, so a still-
+    /// unresolved permission surfaces again eventually without nagging on
+    /// every popover open in the meantime. Settings always shows status
+    /// regardless of this.
+    var permissionBannerDismissed: Bool = false
+
     var duckingEnabled: Bool = true
     var duckingAmount: Float = 0.5         // % to lower non-comm apps when ducking
     var duckingAttackMs: Double = 120
