@@ -240,7 +240,8 @@ final class CoreAudioEngine: AudioEngine {
         if gainEnabled {
             let activeApps = state.apps.filter { $0.isActive }
             let tappableApps = activeApps.filter { $0.supportsVolumeControl }
-            gainController.apply(active: tappableApps, processIDByBundle: processIDByBundle)
+            let initialGains = Dictionary(uniqueKeysWithValues: tappableApps.map { ($0.id, state.effectiveVolume(for: $0)) })
+            gainController.apply(active: tappableApps, processIDByBundle: processIDByBundle, initialGains: initialGains)
             for app in activeApps {
                 pushGain(for: app.id)
             }

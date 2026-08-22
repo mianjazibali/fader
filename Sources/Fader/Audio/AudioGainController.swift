@@ -60,7 +60,13 @@ final class AudioGainController {
     // we don't switch system default output. Leaving in for safety.
     nonisolated(unsafe) static var crashCleanupSavedDefault: AudioObjectID?
 
-    func apply(active: [AudioApp], processIDByBundle: [String: AudioObjectID]) {
+    /// `initialGains` — effective (post-ducking/master) gain per bundle, so a
+    /// freshly (re)created tap starts at the right volume instead of
+    /// GainSlot's `1.0` default. This path rebuilds EVERY tap whenever the
+    /// active-app set changes at all — e.g. pausing one app and resuming it
+    /// later — so without this, apps that didn't even change would briefly
+    /// blast at full volume too.
+    func apply(active: [AudioApp], processIDByBundle: [String: AudioObjectID], initialGains: [String: Float]) {
         lastActiveApps = active
         lastProcessIDByBundle = processIDByBundle
 
@@ -77,7 +83,7 @@ final class AudioGainController {
         }
 
         do {
-            try installTaps(for: active, processIDByBundle: processIDByBundle)
+            try installTaps(for: active, processIDByBundle: processIDByBundle, initialGains: initialGains)
             state = .running(tapCount: taps.count)
             log("Phase 3 active: \(taps.count) tap(s) + ring buffer + playback IOProc")
             startStatsReporter()
@@ -117,11 +123,15 @@ final class AudioGainController {
     private func rebuildForDeviceChange() {
         guard !lastActiveApps.isEmpty else { return }
         log("default output device changed — rebuilding pipeline")
+        // Carry forward whatever gain was already set on each slot — this is
+        // just a device rebind, not a volume change, so the new taps should
+        // start at the same level the old ones were at, not the 1.0 default.
+        let currentGains = Dictionary(uniqueKeysWithValues: slotByBundle.map { ($0.key, $0.value.gain) })
         lastActiveBundles = []
-        apply(active: lastActiveApps, processIDByBundle: lastProcessIDByBundle)
+        apply(active: lastActiveApps, processIDByBundle: lastProcessIDByBundle, initialGains: currentGains)
     }
 
-    private func installTaps(for active: [AudioApp], processIDByBundle: [String: AudioObjectID]) throws {
+    private func installTaps(for active: [AudioApp], processIDByBundle: [String: AudioObjectID], initialGains: [String: Float]) throws {
         let sys = AudioObjectID(kAudioObjectSystemObject)
         guard let outputDeviceID: AudioObjectID = CAObject.read(sys, .defaultOutputDevice),
               let outputUID = CAObject.readString(outputDeviceID, .deviceUID) else {
@@ -154,6 +164,19 @@ final class AudioGainController {
             taps: newTaps,
             ringBuffer: ring
         )
+
+        // Prime every slot with its real gain BEFORE starting the IOProc.
+        // The realtime capture thread can begin processing audio the
+        // instant start() returns, and GainSlot defaults to 1.0 (full
+        // volume) — this rebuild path fires for EVERY active app whenever
+        // the set changes at all (e.g. one app pausing/resuming), so
+        // without this, apps that didn't even change would also briefly
+        // play at full volume until the next gain push lands on the main
+        // thread a beat later.
+        for (bundleID, slot) in zip(bundleOrder, capture.gainSlots) {
+            slot.setGain(initialGains[bundleID] ?? 1.0)
+        }
+
         try capture.start()
         log("capture device started: aggID=\(capture.aggregateID)")
 
