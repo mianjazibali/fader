@@ -7,23 +7,39 @@ investment.
 
 ## ✅ Shipped
 
-### Phase 1 — UI mockup (done)
-- SwiftUI `MenuBarExtra(.window)` panel
-- `LSUIElement = true` (menu-bar-only, no Dock icon)
-- Master slider, per-app rows with icon/name/slider/mute/level meter
-- Custom `FluidSlider` with macOS-native thumb geometry + haptic ticks
-- Liquid Glass aesthetic (`ultraThinMaterial`)
-- Light/dark mode
-- App icon: SVG → ICNS pipeline (waveform-pattern on gradient squircle)
-- Empty state, settings sub-panel, ducking banner
+### Phase 1 — UI (done)
+- SwiftUI `MenuBarExtra(.window)` panel, `LSUIElement = true`
+  (menu-bar-only, no Dock icon)
+- Native macOS-style slider (icons flanking the track, plain adaptive
+  fill, no separate thumb) — matches the system volume control, not a
+  reinvented one
+- Per-app rows: name, icon-free (removed — the slider + name is enough),
+  mute icon, real audio-derived level meter (brightens the fill's
+  opacity, not simulated)
+- Settings screen: Auto-Lower for Calls (rename of "ducking" — toggle,
+  amount slider), About (version + report-a-bug link only)
+- Every icon button that's actually clickable (mute, settings, back,
+  power) gets a visible resting-state circular background — no more
+  "looks like a static icon until you hover it"
+- Single flat brand accent color, matching the website exactly
+- Menu bar icon always opens to the main screen, never the last-viewed
+  one
+- App icon: SVG → ICNS pipeline
 
 ### Phase 2 — Live detection (done)
 - `kAudioHardwarePropertyProcessObjectList` enumeration
-- Per-process property listeners on `kAudioProcessPropertyIsRunningOutput`
-- 1 Hz fallback poll for HAL listener latency
+- Per-process listeners on both `kAudioProcessPropertyIsRunningOutput`
+  *and* the broader `IsRunning` — the narrower property's own change
+  notification is unreliable in practice, so re-checking on either
+  catches a pause → resume transition faster
+- 0.2 Hz fallback poll for whatever both listeners still miss (tightened
+  from 1 Hz — this interval directly bounds how long a resumed app can
+  play un-gain-controlled before Fader catches up)
 - Helper-bundle filtering (`.helper`, `.gpu`, `.renderer`, `xpcservice`)
-- System-process hide-list (CoreSpeech, audiomxd, accessibility daemons…)
-- App categorization (communication / browser / media / game) driving ducking
+- System-process hide-list (CoreSpeech, audiomxd, accessibility
+  daemons…)
+- App categorization (communication / browser / media / game) driving
+  auto-lower-for-calls
 - Cold-cache app icon + display-name resolution via `NSRunningApplication`
 
 ### Phase 3 — Per-app gain (done)
@@ -31,39 +47,82 @@ investment.
 - Capture path: private aggregate device → IOProc applies per-app gain →
   mixes stereo → writes to ring buffer
 - Lock-free SPSC `FloatRingBuffer` (8192 samples, ~85 ms @ 48 kHz)
-- Playback path: IOProc on user's real default output → reads ring buffer
-  → adds to outputData (mixes with non-tapped apps)
+- Playback path: IOProc on user's real default output → reads ring
+  buffer → adds to outputData (mixes with non-tapped apps)
 - Realtime callbacks are allocation-free and lock-free
-- Gain values: aligned-32-bit `Float` written by main, read by IOProc
-- Ducking: state-driven, `.onChange(isAnyCommunicationActive)` re-syncs gains
-- Click-to-mute on icon + mute glyph + context menu
-- System-volume sync (master slider follows F11/F12)
+- Gain values: aligned-32-bit `Float` written by main, read by IOProc —
+  and now primed with the correct value *before* a freshly (re)created
+  tap's IOProc starts, not after
+- Gain is **not** re-multiplied by system volume — the hardware already
+  applies that once to the final output buffer regardless of which
+  client wrote it; doing it again in software meant tapped apps were
+  quieter than their own native volume at 100%
+- Auto-lower for calls: state-driven, `.onChange(isAnyCommunicationActive)`
+  re-syncs gains
+- Click-to-mute on icon + mute glyph + context menu; muted (or otherwise
+  adjusted) apps stay visible in the list even after they go quiet,
+  instead of disappearing and silently reappearing muted later
+- System-volume sync: per-app volume is relative to system volume, so
+  F11/F12 and Control Center still work as expected
 - AppleScript fallback for Music/Spotify/TV/Podcasts (also updates the
   app's own visible volume slider)
-- Crash-safe: signal handler restores default output (legacy from when we
-  changed it; still installed as cheap safety net)
+- Single-instance enforcement — a non-blocking `flock()` on a fixed file,
+  held for the process's lifetime. A second launch (double-click, `open
+  -a`, a stray dev build) while the real instance is running exits
+  immediately instead of standing up a second CoreAudioEngine fighting
+  the first over the same taps
+- Crash-safe: signal handler restores default output (legacy from when
+  we changed it; still installed as cheap safety net)
 
 ### Fork fixes (done)
 - **Headphone/Bluetooth hot-swap** — listens for
   `kAudioHardwarePropertyDefaultOutputDevice` changes and rebuilds the
-  tap/aggregate/playback pipeline automatically; no more restarting the app
-  after switching outputs
-- **Mono output device handling** — the playback IOProc now down/up-mixes
-  the ring buffer's stereo frames to the real device's actual channel count
-  instead of copying raw floats 1:1, fixing scrambled/muffled audio on mono
-  outputs (e.g. Bluetooth in call mode)
-- **Live call audio left untouched** — apps with simultaneous mic input +
-  output (a live call) are skipped for tap creation, since macOS silently
-  zeroes Process Tap content for call audio while `CATapMutedWhenTapped`
-  still mutes the real output — tapping was strictly worse than doing
-  nothing
+  tap/aggregate/playback pipeline automatically; no more restarting the
+  app after switching outputs
+- **Mono output device handling** — the playback IOProc down/up-mixes
+  the ring buffer's stereo frames to the real device's actual channel
+  count instead of copying raw floats 1:1, fixing scrambled/muffled
+  audio on mono outputs (e.g. Bluetooth in call mode)
+- **Live call audio left untouched** — apps with simultaneous mic input
+  + output (a live call) are skipped for tap creation, since macOS
+  silently zeroes Process Tap content for call audio while
+  `CATapMutedWhenTapped` still mutes the real output — tapping was
+  strictly worse than doing nothing
+- **AppKit crash switching to Settings** — `NSHostingController`'s
+  `sizingOptions` continuous auto-tracking could fail to converge on a
+  content-height change and crash; fixed by sizing the window once
+  instead of continuously tracking it
+- **Muted apps disappearing from view** — see Phase 3 above
+- **Apps briefly playing at full volume on resume** — see Phase 3 above
+- **Tapped apps quieter than native at 100%** — see Phase 3 above
+- **Duplicate running instance** — see Phase 3 above
+
+### Rebrand (done)
+- Full identity change from the original fork: name, bundle ID
+  (`com.fader.app`), app icon, brand colors (now a single flat accent,
+  matching the website), website copy and design
+
+### Distribution (partially done)
+- `.dmg` installer (`make dmg`) with an Applications-folder symlink for
+  drag-to-install, uploaded alongside the `.zip` release asset
+- GitHub Issues enabled with a bug-report template
+- Ad-hoc signed (not yet Developer ID / notarized — see below)
+
+### Website (done)
+- Full redesign: flat, editorial, single-accent-color system instead of
+  the original dark-glassmorphic template look
+- **Real interactive demo**, not screenshots — the hero panel's sliders,
+  mute icons, and "simulate a call" button are fully functional and
+  drive two real (CC0-licensed) audio loops mixed live through the Web
+  Audio API, ducking exactly like the real app
+- Download button triggers an immediate `.dmg` download and a dismissible
+  support-modal (Buy Me a Coffee handoff — no payment details ever
+  handled on our side)
 
 ### Quality of life
-- `make sign / make run / make debug / make icon` workflow
-- `--debug`, `--preview`, `--preview-live`, `--mock`, `--test-gain-cycle`
-  diagnostic flags
-- All 4 reported UX bugs from the dev loop fixed (slider overshoot, window
-  drag, ducking false positive, "Helper" rows)
+- `make sign / make run / make debug / make icon / make dmg` workflow
+- `--debug`, `--preview`, `--preview-live`, `--mock`, `--no-gain`,
+  `--test-gain-cycle` diagnostic flags
 
 ---
 
@@ -71,12 +130,12 @@ investment.
 
 | Task | Effort | Value |
 |---|---|---|
-| Real **RMS level meters** from the IOProc, published via a second SPSC ring | low | medium |
+| Real **RMS level meters** from the IOProc (currently peak, not RMS) | low | low-medium |
 | **Sample-rate handling** — query device nominal sample rate, resample if tap and output disagree | low-med | medium |
 | **Mute click suppression** — fade gain over 5–10 ms instead of instant 0 (avoids audible click on fast transitions) | low | medium |
 | **Row entry/exit animations** — already partially present, could be smoother | low | low |
-| **Settings panel expansion** — ducking attack/release sliders, output-device picker | low | medium |
-| **Custom monochrome menu bar icon** asset matching the bundle icon at 16/32 px (currently SF Symbol `waveform`) | low | low |
+| **Settings panel expansion** — auto-lower attack/release sliders, output-device picker | low | medium |
+| **Custom monochrome menu bar icon** asset matching the bundle icon at 16/32 px (currently SF Symbol `slider.vertical.3`) | low | low |
 
 ---
 
@@ -90,7 +149,7 @@ investment.
 | **Permissions UI** — proper in-app onboarding for AppleScript Automation + System Audio Capture (currently silent failures with log messages) | medium | high |
 | **Multiple output device support** — explicit picker, per-app routing | medium-high | medium |
 | **App allowlist** — let user choose which apps Fader controls (not auto-tap everything) | medium | low-med |
-| **Tap re-creation strategy** — current design tears down + rebuilds the entire aggregate when the active set changes. Smoother to add/remove taps in place. | medium | medium |
+| **Tap re-creation strategy** — current design tears down + rebuilds the entire aggregate when the active set changes; smoother to add/remove taps in place | medium | medium |
 | **Crash diagnostics** — symbolicated reports, optional opt-in | medium | low |
 
 ---
@@ -99,13 +158,11 @@ investment.
 
 | Task | Effort | Value |
 |---|---|---|
-| **Developer ID code signing** + Notarization — currently ad-hoc, only runs on this Mac | medium | required for ship |
-| **DMG installer** (or .pkg) with a license screen | low-med | medium |
+| **Developer ID code signing** + Notarization — currently ad-hoc, needs right-click-to-open on first launch | medium | required for wide distribution |
 | **Sparkle auto-update** integration | medium | high (post-launch) |
-| **Privacy policy + website** — required for Notarization, helpful for users | low | required |
+| **Privacy policy** — required for Notarization | low | required |
 | **App Store submission** — *would require sandboxing, which breaks Process Taps. Probably not viable.* | n/a | n/a |
-| **Pricing / licensing** — free? Set Apps Inc-style? donation-ware? | n/a | n/a |
-| **Marketing site** — feature page, demo video, comparison vs SoundSource | high | high |
+| **Pricing / licensing** — free? Set Apps Inc-style? donation-ware (currently just a Buy Me a Coffee prompt after download)? | n/a | n/a |
 
 ---
 
@@ -117,7 +174,7 @@ investment.
 - Apps with non-stereo output (mono → stereo upmix)
 - Performance under stress (10+ concurrent audio apps)
 - Behavior when CoreAudio HAL restarts (e.g. after a sample-rate change)
-- macOS 15 Sequoia / 26 (whatever lands) — the orange audio-capture
+- macOS 15 Sequoia / 26 (whatever lands) — the purple audio-capture
   indicator behavior may change
 
 ---
@@ -133,9 +190,10 @@ investment.
 
 ## Honest current state
 
-This is a **functional MVP**. The Phase 3 audio pipeline is genuinely
-working with two IOProcs and a ring buffer, proven via stats
-(`tap=400k ring=0 playback=200k underrun=0` per 2 s).
-
-For one user on one Mac, it works. For shipping to other users, the
-distribution column above is mandatory work.
+This is a **working daily-driver app**, not a proof of concept — the
+Phase 3 audio pipeline is genuinely working with two IOProcs and a ring
+buffer, it ships as a signed `.dmg`, and it's what this project's own
+author actually runs day to day. Developer ID signing/notarization is
+the main thing standing between "works great for people willing to
+right-click → Open once" and a fully frictionless install for a wider
+audience.
