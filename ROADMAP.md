@@ -158,7 +158,7 @@ investment.
 
 | Task | Effort | Value |
 |---|---|---|
-| **Developer ID code signing** + Notarization — currently ad-hoc, needs right-click-to-open on first launch | medium | required for wide distribution |
+| **Developer ID code signing** + Notarization — currently ad-hoc, needs a one-time [System Settings → Privacy & Security → Open Anyway](https://support.apple.com/en-gb/guide/mac-help/mh40616/mac) approval on first launch | medium | required for wide distribution |
 | **Sparkle auto-update** integration | medium | high (post-launch) |
 | **Privacy policy** — required for Notarization | low | required |
 | **App Store submission** — *would require sandboxing, which breaks Process Taps. Probably not viable.* | n/a | n/a |
@@ -195,5 +195,5 @@ Phase 3 audio pipeline is genuinely working with two IOProcs and a ring
 buffer, it ships as a signed `.dmg`, and it's what this project's own
 author actually runs day to day. Developer ID signing/notarization is
 the main thing standing between "works great for people willing to
-right-click → Open once" and a fully frictionless install for a wider
-audience.
+approve it once via System Settings → Privacy & Security" and a fully
+frictionless install for a wider audience.

@@ -102,8 +102,9 @@ struct MenuBarLabel: View {
     @Bindable var state: AudioState
 
     var body: some View {
-        Image(systemName: "slider.vertical.3")
-            .symbolRenderingMode(.hierarchical)
+        FaderMark()
+            .stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+            .frame(width: 15, height: 15)
             // Subtle visual cue when any app is producing output, without
             // changing the icon's silhouette.
             .foregroundStyle(state.apps.contains(where: { $0.isActive }) ? .primary : .secondary)

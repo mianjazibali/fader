@@ -408,18 +408,12 @@
   .modal-emoji { font-size: 32px; margin-bottom: 14px; display: block; }
   .modal-card h3 { font-size: 22px; font-weight: 800; margin-bottom: 10px; letter-spacing: -0.5px; }
   .modal-card p.modal-body { color: var(--muted); font-size: 15px; margin-bottom: 22px; }
-  .amount-row { display: flex; gap: 8px; margin-bottom: 20px; }
-  .amount-btn {
-    flex: 1; padding: 12px 0;
-    background: transparent;
-    border: 1.5px solid var(--line);
-    color: var(--ink); font-weight: 700; font-size: 15px;
-    cursor: pointer; font-family: inherit;
-    transition: background .15s, color .15s;
-  }
-  .amount-btn:hover { border-color: var(--accent); }
-  .amount-btn.selected { background: var(--accent); border-color: var(--accent); color: var(--ink); }
   .modal-actions { display: flex; flex-direction: column; gap: 10px; }
+  /* Buy Me a Coffee's own floating trigger button (#bmc-wbtn, auto-inserted
+     by their widget script) is never shown — we drive it programmatically
+     from our own "Support" button instead, so it doesn't sit as a second,
+     off-brand floating button on top of the page. */
+  #bmc-wbtn { display: none !important; }
   .btn-support { background: var(--ink); color: var(--paper); justify-content: center; }
   .btn-support:hover { background: var(--accent); border-color: var(--accent); color: var(--ink); }
   .modal-skip {
@@ -440,6 +434,8 @@
     color: var(--muted); font-size: 14px; line-height: 1.7;
   }
   .install-steps-list strong { color: var(--ink); }
+  .install-apple-link { font-size: 13px !important; margin-bottom: 16px !important; }
+  .install-apple-link a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
   .modal-got-it { width: 100%; justify-content: center; }
 
   /* Mobile */
@@ -594,14 +590,9 @@
     <div class="modal-phase modal-phase-ask">
       <span class="modal-emoji">☕</span>
       <h3>Enjoying Fader already?</h3>
-      <p class="modal-body">It's free and always will be — downloading never depends on this. But if it saves you from one more blasted notification mid-call, a small tip keeps it maintained and me caffeinated for the next bug fix.</p>
-      <div class="amount-row">
-        <button class="amount-btn" data-amount="3" onclick="selectAmount(3)">€3</button>
-        <button class="amount-btn selected" data-amount="5" onclick="selectAmount(5)">€5</button>
-        <button class="amount-btn" data-amount="10" onclick="selectAmount(10)">€10</button>
-      </div>
+      <p class="modal-body">It's free and always will be — downloading never depends on this. But if it saves you from one more blasted notification mid-call, a small tip keeps it maintained and me caffeinated for the next bug fix. You pick the amount on Buy Me a Coffee's own page — nothing routes through us.</p>
       <div class="modal-actions">
-        <a class="btn btn-support" id="supportBtn" href="https://buymeacoffee.com/mianjazibali?amount=5" target="_blank" rel="noopener" onclick="beginDownload()">Support with €5 &amp; download</a>
+        <button class="btn btn-support" id="supportBtn" onclick="openSupportWidget()">Support on Buy Me a Coffee</button>
         <button class="modal-skip" onclick="beginDownload()">No thanks, just download</button>
       </div>
     </div>
@@ -609,12 +600,14 @@
     <div class="modal-phase modal-phase-install">
       <span class="modal-emoji">📦</span>
       <h3>Fader.dmg is downloading</h3>
-      <p class="modal-body">One extra step on first launch — Fader is signed ad-hoc, not with a paid Apple Developer ID, so a plain double-click gets blocked once:</p>
+      <p class="modal-body">One extra step on first launch — Fader is signed ad-hoc, not with a paid Apple Developer ID, so macOS blocks it once:</p>
       <ol class="install-steps-list">
         <li>Open <strong>Fader.dmg</strong> and drag Fader into <strong>Applications</strong>.</li>
-        <li><strong>Right-click</strong> Fader in Applications and choose <strong>Open</strong>.</li>
-        <li>Confirm in the dialog that appears — you only need to do this once.</li>
+        <li>Double-click Fader — macOS will refuse to open it. That's expected.</li>
+        <li>Open <strong>System Settings → Privacy &amp; Security</strong>, scroll to Security, and click <strong>Open Anyway</strong> next to Fader.</li>
+        <li>Confirm once more (enter your password if asked) — only needed the first time.</li>
       </ol>
+      <p class="modal-body install-apple-link">Straight from Apple: <a href="https://support.apple.com/en-gb/guide/mac-help/mh40616/mac" target="_blank" rel="noopener">support.apple.com/guide/mac-help/mh40616</a></p>
       <button class="btn btn-primary modal-got-it" onclick="closeSupportModal()">Got it</button>
     </div>
   </div>
@@ -821,7 +814,6 @@
 
   // ---- Download + support modal ----
   const DMG_URL = 'https://github.com/mianjazibali/fader/releases/latest/download/Fader.dmg';
-  let selectedAmount = 5;
 
   // Both download buttons call this — it opens the ask phase, it does
   // NOT download yet. Downloading only ever happens from inside the
@@ -849,14 +841,29 @@
   function closeSupportModal() {
     document.getElementById('supportModal').classList.remove('open');
   }
-  function selectAmount(amount) {
-    selectedAmount = amount;
-    document.querySelectorAll('.amount-btn').forEach(btn => {
-      btn.classList.toggle('selected', parseInt(btn.dataset.amount, 10) === amount);
-    });
-    const btn = document.getElementById('supportBtn');
-    btn.textContent = 'Support with €' + amount + ' & download';
-    btn.href = 'https://buymeacoffee.com/mianjazibali?amount=' + amount;
+  // Opens Buy Me a Coffee's own embedded checkout overlay (real payment
+  // fields, hosted and processed entirely by them — we never see or
+  // touch payment details). There's no way to know from here whether a
+  // payment actually completed (BMC exposes no success callback and this
+  // is a static site with no backend to receive a webhook), so this is a
+  // soft gate, not a verified one: the download starts once the supporter
+  // has closed the BMC overlay, whether or not they went through with it.
+  // If the widget script didn't load for any reason, fail open — a
+  // third-party script hiccup should never block the free download.
+  function openSupportWidget() {
+    const wbtn = document.getElementById('bmc-wbtn');
+    if (!wbtn) { beginDownload(); return; }
+    wbtn.click();
+    let wasOpen = false;
+    const poll = setInterval(() => {
+      const frame = document.getElementById('bmc-iframe');
+      const height = frame ? parseInt(frame.style.height, 10) || 0 : 0;
+      if (height > 0) wasOpen = true;
+      else if (wasOpen) {
+        clearInterval(poll);
+        beginDownload();
+      }
+    }, 300);
   }
   document.getElementById('supportModal').addEventListener('click', (e) => {
     if (e.target.id === 'supportModal') closeSupportModal();
@@ -865,6 +872,15 @@
     if (e.key === 'Escape') closeSupportModal();
   });
 </script>
+
+<!-- Buy Me a Coffee's official embed: real hosted checkout overlay, no
+     payment details ever touch this site. Its own floating button is
+     hidden (see #bmc-wbtn above) and triggered programmatically instead. -->
+<script data-name="BMC-Widget" data-cfasync="false"
+  src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
+  data-id="mianjazibali" data-description="Support Fader — thanks for keeping it free!"
+  data-message="" data-color="#FF5A1F" data-position="Right"
+  data-x_margin="18" data-y_margin="18"></script>
 
 </body>
 </html>

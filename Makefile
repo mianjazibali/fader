@@ -9,15 +9,19 @@ EXECUTABLE := $(BUILD_DIR)/$(CONFIG)/$(APP_NAME)
 INFO_PLIST := Sources/Fader/Resources/Info.plist
 ENTITLEMENTS := Sources/Fader/Resources/Fader.entitlements
 
-# Use Xcode's Swift toolchain (full SDK + frameworks) when available.
-XCODE_DEV := $(shell xcode-select -p 2>/dev/null)
-ifneq ($(XCODE_DEV),)
-SWIFT := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift
+# Use Xcode's full toolchain when it's actually installed; fall back to
+# plain `swift` (Command Line Tools) otherwise. Checking for the directory
+# itself, not just a non-empty `xcode-select -p`, matters because CLT-only
+# machines report a valid (non-Xcode) path there too.
+XCODE_DEV := /Applications/Xcode.app/Contents/Developer
+ifneq ($(wildcard $(XCODE_DEV)),)
+SWIFT := DEVELOPER_DIR=$(XCODE_DEV) xcrun swift
 else
 SWIFT := swift
 endif
 
 DMG := build/$(APP_NAME).dmg
+DMG_RW := build/$(APP_NAME)-rw.dmg
 DMG_STAGING := build/dmg-staging
 
 .PHONY: build bundle sign run debug dmg clean
@@ -68,12 +72,32 @@ debug:
 	open $(APP_BUNDLE)
 
 dmg: sign
-	@rm -rf $(DMG_STAGING) $(DMG)
+	@rm -rf $(DMG_STAGING) $(DMG) $(DMG_RW)
 	@mkdir -p $(DMG_STAGING)
 	cp -R $(APP_BUNDLE) $(DMG_STAGING)/
 	@ln -s /Applications $(DMG_STAGING)/Applications
-	hdiutil create -volname "$(APP_NAME)" -srcfolder $(DMG_STAGING) -ov -format UDZO $(DMG)
+	hdiutil create -volname "$(APP_NAME)" -srcfolder $(DMG_STAGING) -ov -format UDRW -fs HFS+ $(DMG_RW)
+	@MOUNT_DIR=$$(hdiutil attach $(DMG_RW) -nobrowse -readwrite | tail -1 | awk -F '\t' '{print $$NF}'); \
+	echo "Mounted at $$MOUNT_DIR"; \
+	cp Resources/Icon/AppIcon.icns "$$MOUNT_DIR/.VolumeIcon.icns"; \
+	SetFile -c icnC "$$MOUNT_DIR/.VolumeIcon.icns"; \
+	SetFile -a C "$$MOUNT_DIR"; \
+	hdiutil detach "$$MOUNT_DIR"
+	hdiutil convert $(DMG_RW) -format UDZO -ov -o $(DMG)
+	@rm -f $(DMG_RW)
 	@rm -rf $(DMG_STAGING)
+	@# The volume-icon dance above only covers the icon shown once the dmg
+	@# is mounted. Finder shows the .dmg FILE itself (e.g. sitting in
+	@# ~/Downloads, unmounted) with a plain generic disk-image icon unless
+	@# we also stamp one directly onto the file via its resource fork —
+	@# same "has custom icon" mechanism, just applied to the outer file
+	@# instead of the volume root.
+	@cp Resources/Icon/AppIcon.icns /tmp/fader-dmg-icon.icns
+	@sips -i /tmp/fader-dmg-icon.icns >/dev/null
+	@DeRez -only icns /tmp/fader-dmg-icon.icns > /tmp/fader-dmg-icon.rsrc
+	@Rez -append /tmp/fader-dmg-icon.rsrc -o $(DMG)
+	@SetFile -a C $(DMG)
+	@rm -f /tmp/fader-dmg-icon.icns /tmp/fader-dmg-icon.rsrc
 	@echo "Created $(DMG)"
 
 clean:

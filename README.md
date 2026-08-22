@@ -221,9 +221,11 @@ Fader is a **working daily-driver app**, not a proof of concept — the
 Phase 3 audio pipeline is real (two IOProcs + a lock-free ring buffer),
 verified under stress, and it's what this project's own author runs day to
 day. It's distributed as a signed-but-not-notarized `.dmg` (ad-hoc
-signature, right-click-to-open on first launch) — see
-[ROADMAP.md](ROADMAP.md) for Developer ID / Notarization and the rest of
-the open distribution work.
+signature — first launch needs one approval via [System Settings →
+Privacy & Security → Open
+Anyway](https://support.apple.com/en-gb/guide/mac-help/mh40616/mac)) —
+see [ROADMAP.md](ROADMAP.md) for Developer ID / Notarization and the rest
+of the open distribution work.
 
 ---
 

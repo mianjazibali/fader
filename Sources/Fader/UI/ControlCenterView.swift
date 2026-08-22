@@ -162,9 +162,9 @@ private struct HeaderView: View {
                     .frame(width: 30, height: 30)
                     .shadow(color: Brand.accent.opacity(0.30), radius: 6, y: 2)
 
-                Image(systemName: "slider.vertical.3")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
+                FaderMark()
+                    .stroke(Color.white, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .frame(width: 14, height: 14)
             }
 
             VStack(alignment: .leading, spacing: 2) {
