@@ -30,8 +30,9 @@ final class AudioProcessDetector: @unchecked Sendable {
 
     /// Listener on the system object for process-list mutations.
     private var systemListener: ListenerHandle?
-    /// Per-process listeners keyed by AudioObjectID.
-    private var perProcessListeners: [AudioObjectID: ListenerHandle] = [:]
+    /// Per-process listeners keyed by AudioObjectID. Each process gets two —
+    /// see the comment where they're installed below.
+    private var perProcessListeners: [AudioObjectID: [ListenerHandle]] = [:]
 
     private var lastSnapshot: [AudioProcess] = []
 
@@ -50,10 +51,18 @@ final class AudioProcessDetector: @unchecked Sendable {
     /// HAL property listeners sometimes miss state transitions (Music going
     /// from paused → playing can take 30+ seconds before piro flips). A
     /// low-frequency poll closes that gap without the cost of full polling.
+    ///
+    /// This interval used to be 1.0s. Until refresh() catches a resume,
+    /// the app's audio plays through its normal untapped path at full
+    /// system volume — completely outside our gain control — so whatever
+    /// this interval is IS the user-audible "plays loud, then snaps down
+    /// to the set volume" window whenever the two listeners above miss
+    /// the transition. Tightened to 0.2s: five times the HAL traffic, but
+    /// each poll is just a handful of cheap property reads.
     private var pollTimer: DispatchSourceTimer?
     private func startPoll() {
         let timer = DispatchSource.makeTimerSource(queue: queue)
-        timer.schedule(deadline: .now() + 1.0, repeating: 1.0)
+        timer.schedule(deadline: .now() + 0.2, repeating: 0.2)
         timer.setEventHandler { [self] in refresh() }
         timer.resume()
         pollTimer = timer
@@ -65,7 +74,7 @@ final class AudioProcessDetector: @unchecked Sendable {
             pollTimer = nil
             systemListener?.dispose()
             systemListener = nil
-            for (_, h) in perProcessListeners { h.dispose() }
+            for (_, handles) in perProcessListeners { handles.forEach { $0.dispose() } }
             perProcessListeners.removeAll()
         }
     }
@@ -95,21 +104,26 @@ final class AudioProcessDetector: @unchecked Sendable {
         let known = Set(perProcessListeners.keys)
         let current = Set(processIDs)
 
-        // New processes: subscribe to their isRunningOutput flag.
+        // New processes: subscribe to isRunningOutput (what we actually
+        // act on) AND the broader isRunning flag. isRunningOutput's own
+        // change notification is the one that's unreliable in practice —
+        // see the poll comment below — but isRunning tends to fire
+        // consistently, so listening to both and re-checking on either
+        // catches a pause → resume transition much faster than relying on
+        // isRunningOutput's notification alone.
         for id in current.subtracting(known) {
-            if let h = CAObject.addListener(
-                on: id,
-                selector: .processIsRunningOutput,
-                queue: queue,
-                handler: { [self] in refresh() }
-            ) {
-                perProcessListeners[id] = h
+            let handles = [
+                CAObject.addListener(on: id, selector: .processIsRunningOutput, queue: queue, handler: { [self] in refresh() }),
+                CAObject.addListener(on: id, selector: .processIsRunning, queue: queue, handler: { [self] in refresh() }),
+            ].compactMap { $0 }
+            if !handles.isEmpty {
+                perProcessListeners[id] = handles
             }
         }
 
         // Departed processes: drop listeners.
         for id in known.subtracting(current) {
-            perProcessListeners[id]?.dispose()
+            perProcessListeners[id]?.forEach { $0.dispose() }
             perProcessListeners.removeValue(forKey: id)
         }
 
