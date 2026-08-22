@@ -6,6 +6,9 @@ struct AppRowView: View {
     @Bindable var state: AudioState
     let engine: any AudioEngine
 
+    @State private var showUnsupportedDetail = false
+    @State private var showCommDetail = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Top line: name + comm badge + ... + % + lock badge
@@ -16,19 +19,45 @@ struct AppRowView: View {
                     .lineLimit(1)
 
                 if app.category == .communication {
-                    Image(systemName: "person.wave.2.fill")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.orange)
-                        .help("Communication app — lowers other apps' volume during calls")
+                    Button {
+                        showCommDetail = true
+                    } label: {
+                        Image(systemName: "person.wave.2.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.orange)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Communication app. Click for details.")
+                    .popover(isPresented: $showCommDetail, arrowEdge: .bottom) {
+                        Text(commDetail)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(width: 220, alignment: .leading)
+                            .padding(12)
+                    }
                 }
 
                 Spacer(minLength: 0)
 
                 if !app.supportsVolumeControl {
-                    Image(systemName: "info.circle.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.orange.opacity(0.85))
-                        .help("Per-app volume not yet supported for this app")
+                    Button {
+                        showUnsupportedDetail = true
+                    } label: {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.orange.opacity(0.85))
+                    }
+                    .buttonStyle(.plain)
+                    .help(unsupportedShortHint)
+                    .popover(isPresented: $showUnsupportedDetail, arrowEdge: .bottom) {
+                        Text(unsupportedDetail)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(width: 220, alignment: .leading)
+                            .padding(12)
+                    }
                 }
 
                 Text(volumeText)
@@ -106,6 +135,21 @@ struct AppRowView: View {
         guard let pid = app.pid,
               let running = NSRunningApplication(processIdentifier: pid) else { return }
         running.terminate()
+    }
+
+    private var unsupportedShortHint: String {
+        app.isInLiveCall ? "On a call. Click for details." : "Volume control unavailable. Click for details."
+    }
+
+    private var unsupportedDetail: String {
+        if app.isInLiveCall {
+            return "\(app.displayName) is on a live call. Fader leaves call audio untouched by default, since macOS doesn't guarantee it can cleanly silence the original audio when Fader taps it, so forcing control here could cause an echo.\n\nTo try it anyway, turn on \"Control volume during calls\" in Settings → During Calls. If it echoes, turn it back off."
+        }
+        return "Fader can't control \(app.displayName)'s volume right now."
+    }
+
+    private var commDetail: String {
+        "\(app.displayName) is a communication app. While it's active, Fader automatically lowers other apps' volume by \(Int(state.duckingAmount * 100))% so calls stay easy to hear.\n\nAdjust or turn this off in Settings → Auto-Lower for Calls."
     }
 
     // Label reflects the app's OWN slider setting (0...100%, relative —

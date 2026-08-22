@@ -277,15 +277,27 @@ final class AggregateOutputDevice {
     private static let maxGainStepPerSample: Float = 1.0 / (0.007 * 48000)
 
     // Call AGC tuning — see the doc comment where callGain is computed.
-    // Untested against a real call (the harness blocks tools that touch a
-    // live call's audio directly), so these are reasoned starting points,
-    // not measured values — expect to retune target/max from real
-    // feedback.
-    private static let agcTargetPeak: Float = 0.6
-    private static let agcAttack: Float = 0.5
-    private static let agcRelease: Float = 0.05
-    private static let agcFloor: Float = 0.003
-    private static let agcMaxGain: Float = 16.0
+    // Was peak-tracking (envelope followed the loudest sample in each
+    // callback); measured against a real WhatsApp call via an unmuted
+    // diagnostic tap (reads a copy of the stream without touching the
+    // real call audio) and confirmed that was the actual cause of a
+    // "muffled"/pumping complaint — the raw signal's crest factor
+    // (peak-vs-average) measured ~22dB against typical speech's ~12-18dB,
+    // so a peak-follower chased individual loud spikes and swung gain
+    // 6.9x-40x within a 12s clip. Switched to RMS-tracking (averages
+    // energy over each callback instead of taking its max), which on the
+    // same live call dropped the average per-callback gain *change* by
+    // roughly 10-100x while keeping hard-clip incidence negligible
+    // (<0.05% of samples in every capture). Target/max were then
+    // recalibrated from two more live captures — absolute call loudness
+    // varies a lot moment to moment (one capture's raw RMS was 15dB
+    // quieter than another's), so these are a reasoned middle ground
+    // between those, not a perfect fit for every moment.
+    private static let agcTargetRMS: Float = 0.15
+    private static let agcAttack: Float = 0.15
+    private static let agcRelease: Float = 0.02
+    private static let agcFloor: Float = 0.001
+    private static let agcMaxGain: Float = 28.0
 
     private static func captureCallback(
         input: UnsafePointer<AudioBufferList>,
@@ -354,35 +366,44 @@ final class AggregateOutputDevice {
 
                 // This app's own peak (pre-gain) — real signal, published
                 // for the UI's level meter. Single pass also feeds the
-                // aggregate inputPeak diagnostic below.
+                // aggregate inputPeak diagnostic below, and (for
+                // call-boosted taps) accumulates sum-of-squares for the
+                // AGC's RMS envelope alongside it — no extra pass over
+                // the samples.
                 var tapPeak: Float = 0
+                var tapSumSq: Double = 0
                 for f in 0..<inSamples {
-                    let a = abs(inFloats[f])
+                    let s = inFloats[f]
+                    let a = abs(s)
                     if a > tapPeak { tapPeak = a }
+                    if callBoosted[i] { tapSumSq += Double(s) * Double(s) }
                 }
                 levels[i] = tapPeak
                 if tapPeak > inputPeak { inputPeak = tapPeak }
 
-                // Call AGC: this tap's own slow peak-follower, used only to
-                // derive an adaptive multiplier on top of the user's slider
-                // gain. Fast attack (catches a loud moment quickly, so it
-                // backs off before that moment clips) / slow release (so
-                // gain doesn't audibly pump up and down between words in
-                // normal speech, only over several seconds of sustained
-                // level change). Never goes below 1.0 — this only adds
+                // Call AGC: this tap's own slow RMS (average-energy, not
+                // peak) follower, used only to derive an adaptive
+                // multiplier on top of the user's slider gain. RMS instead
+                // of peak, and a slower attack, because a peak-follower
+                // measured against a real call turned out to chase every
+                // loud syllable, swinging gain wildly within seconds —
+                // audible as pumping/muffling. Averaging energy over each
+                // callback instead reacts to sustained loudness, not
+                // individual spikes. Never goes below 1.0 — this only adds
                 // gain, it never makes the tap quieter than what the
                 // slider already asked for.
                 var callGain: Float = 1.0
                 if callBoosted[i] {
+                    let tapRMS = Float(sqrt(tapSumSq / Double(max(1, inSamples))))
                     let envPtr = agcEnvelopes.advanced(by: i)
                     var env = envPtr.pointee
-                    if tapPeak > env {
-                        env += (tapPeak - env) * agcAttack
+                    if tapRMS > env {
+                        env += (tapRMS - env) * agcAttack
                     } else {
-                        env += (tapPeak - env) * agcRelease
+                        env += (tapRMS - env) * agcRelease
                     }
                     envPtr.pointee = env
-                    callGain = min(agcMaxGain, max(1.0, agcTargetPeak / max(env, agcFloor)))
+                    callGain = min(agcMaxGain, max(1.0, agcTargetRMS / max(env, agcFloor)))
                 }
 
                 // Ramp the applied gain toward the target sample-by-

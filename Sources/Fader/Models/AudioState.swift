@@ -37,8 +37,33 @@ final class AudioState {
     /// permanent "don't ask again" bookkeeping.
     var showSupportPrompt: Bool = false
 
-    var duckingEnabled: Bool = true
-    var duckingAmount: Float = 0.5         // % to lower non-comm apps when ducking
+    /// Backing store for the three properties below — loaded once in
+    /// `init`, written back on every change via each property's `didSet`.
+    private let settingsStore = SettingsStore()
+    private var duckingAmountSaveTask: Task<Void, Never>?
+
+    var duckingEnabled: Bool = true {
+        didSet {
+            guard duckingEnabled != oldValue else { return }
+            settingsStore.duckingEnabled = duckingEnabled
+        }
+    }
+    var duckingAmount: Float = 0.5 {         // % to lower non-comm apps when ducking
+        didSet {
+            guard duckingAmount != oldValue else { return }
+            // Debounced like VolumeStore — this is bound to a slider that
+            // fires continuously while dragging, and UserDefaults doesn't
+            // need to see every intermediate value.
+            duckingAmountSaveTask?.cancel()
+            let store = settingsStore
+            let value = duckingAmount
+            duckingAmountSaveTask = Task {
+                try? await Task.sleep(for: .milliseconds(400))
+                guard !Task.isCancelled else { return }
+                store.duckingAmount = value
+            }
+        }
+    }
     var duckingAttackMs: Double = 120
     var duckingReleaseMs: Double = 600
 
@@ -55,7 +80,18 @@ final class AudioState {
     /// an audible echo/doubling. Opt-in so nobody hits that by surprise;
     /// the user who wants this can flip it on and immediately hear for
     /// themselves whether it's clean or echoes.
-    var allowVolumeControlDuringCalls: Bool = false
+    var allowVolumeControlDuringCalls: Bool = false {
+        didSet {
+            guard allowVolumeControlDuringCalls != oldValue else { return }
+            settingsStore.allowVolumeControlDuringCalls = allowVolumeControlDuringCalls
+        }
+    }
+
+    init() {
+        duckingEnabled = settingsStore.duckingEnabled
+        duckingAmount = settingsStore.duckingAmount
+        allowVolumeControlDuringCalls = settingsStore.allowVolumeControlDuringCalls
+    }
 
     /// The user-perceived volume for an app: its own slider (0...100%),
     /// then ducking. Deliberately NOT multiplied by systemVolume here —
