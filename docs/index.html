@@ -320,22 +320,40 @@
     max-width: 560px; margin-bottom: 44px;
   }
 
-  /* Feature spec list — a bordered ledger, not a card grid. */
-  .spec-list { border-top: 1.5px solid var(--line); }
-  .spec-row {
+  /* Why Fader — three headline selling points as a hairline-divided grid
+     (thin lines between cards via a 1px background gap, no shadows/
+     rounding, same flat system as the rest of the page), then a compact
+     trust-badge strip for the reassurance points underneath. Two tiers
+     on purpose: the things that actually sell the app get visual
+     weight; the "yes, it's safe/fast/free" facts stay scannable but
+     don't compete for attention. */
+  .benefit-grid {
     display: grid;
-    grid-template-columns: 60px 240px minmax(0, 1fr);
-    gap: 24px;
-    padding: 22px 0;
-    border-bottom: 1.5px solid var(--line);
-    align-items: baseline;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5px;
+    background: var(--line);
+    border: 1.5px solid var(--line);
+    margin-bottom: 36px;
   }
-  .spec-num {
-    font-size: 13px; font-weight: 700; color: var(--muted);
-    font-variant-numeric: tabular-nums;
+  .benefit-card { background: var(--paper); padding: 30px 26px; }
+  .benefit-eyebrow {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 16px;
   }
-  .spec-title { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; }
-  .spec-desc { color: var(--muted); font-size: 15px; max-width: 520px; }
+  .benefit-title {
+    font-size: 21px; font-weight: 800; letter-spacing: -0.6px; line-height: 1.18;
+    margin-bottom: 10px;
+  }
+  .benefit-desc { color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+  .trust-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .trust-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 1.5px solid var(--line);
+    padding: 9px 14px;
+    font-size: 13px; font-weight: 600;
+  }
+  .trust-pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
 
   /* Footer */
   footer {
@@ -424,8 +442,7 @@
     nav a.nav-link { display: none; }
     .oss-tag { display: none; }
     .panel-mock { width: 100%; max-width: 380px; }
-    .spec-row { grid-template-columns: 40px 1fr; }
-    .spec-row .spec-desc { grid-column: 2; }
+    .benefit-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -510,47 +527,31 @@
 <section id="features" class="container">
   <p class="section-kicker">Why Fader</p>
   <h2>macOS only gives you one volume knob for everything. Fader gives every app its own.</h2>
-  <div class="spec-list">
-    <div class="spec-row">
-      <div class="spec-num">01</div>
-      <div class="spec-title">Per-app sliders</div>
-      <div class="spec-desc">Every app that's making noise gets its own slider. Drag to turn it up or down, instantly.</div>
+
+  <div class="benefit-grid">
+    <div class="benefit-card">
+      <p class="benefit-eyebrow">01 — Per-app control</p>
+      <h3 class="benefit-title">Turn down the app. Not everything.</h3>
+      <p class="benefit-desc">Every app making noise gets its own slider. Drag Spotify down without touching your Zoom call — stop choosing between the two.</p>
     </div>
-    <div class="spec-row">
-      <div class="spec-num">02</div>
-      <div class="spec-title">One-click mute</div>
-      <div class="spec-desc">Tap the speaker icon to silence any one app. Everything else keeps playing.</div>
+    <div class="benefit-card">
+      <p class="benefit-eyebrow">02 — Auto-ducking</p>
+      <h3 class="benefit-title">Never scramble for the pause button.</h3>
+      <p class="benefit-desc">The second Zoom, Teams, or Slack picks up, everything else quiets down on its own — then comes right back when the call ends.</p>
     </div>
-    <div class="spec-row">
-      <div class="spec-num">03</div>
-      <div class="spec-title">Quiets down for calls</div>
-      <div class="spec-desc">The moment Zoom, Teams, or Slack picks up, everything else automatically turns down — no fumbling for the pause button.</div>
+    <div class="benefit-card">
+      <p class="benefit-eyebrow">03 — Instant mute</p>
+      <h3 class="benefit-title">Silence one app. Instantly.</h3>
+      <p class="benefit-desc">Tap the speaker icon and that one app goes quiet. Everything else keeps playing exactly as it was.</p>
     </div>
-    <div class="spec-row">
-      <div class="spec-num">04</div>
-      <div class="spec-title">Plays nice with your volume keys</div>
-      <div class="spec-desc">Every app's slider is relative to your Mac's system volume, so your F11/F12 keys still work exactly like they always have.</div>
-    </div>
-    <div class="spec-row">
-      <div class="spec-num">05</div>
-      <div class="spec-title">You won't notice it's running</div>
-      <div class="spec-desc">Well under 1% CPU, even while actively mixing audio. No fans spinning up, no battery drain.</div>
-    </div>
-    <div class="spec-row">
-      <div class="spec-num">06</div>
-      <div class="spec-title">Menu bar only</div>
-      <div class="spec-desc">No Dock icon, no window on launch. Just a small icon in your menu bar, there when you need it.</div>
-    </div>
-    <div class="spec-row">
-      <div class="spec-num">07</div>
-      <div class="spec-title">No mic access, ever</div>
-      <div class="spec-desc">Fader never touches your microphone. You'll see macOS's purple recording dot while it runs — that's expected for any app that adjusts audio, same as SoundSource.</div>
-    </div>
-    <div class="spec-row">
-      <div class="spec-num">08</div>
-      <div class="spec-title">Open source</div>
-      <div class="spec-desc">Free, MIT licensed, and fully inspectable on GitHub. File an issue, ship a PR.</div>
-    </div>
+  </div>
+
+  <div class="trust-row">
+    <span class="trust-pill"><span class="dot"></span>Under 1% CPU</span>
+    <span class="trust-pill"><span class="dot"></span>No mic access, ever</span>
+    <span class="trust-pill"><span class="dot"></span>Menu bar only, no Dock icon</span>
+    <span class="trust-pill"><span class="dot"></span>Works with your volume keys</span>
+    <span class="trust-pill"><span class="dot"></span>Free &amp; open source, MIT licensed</span>
   </div>
 </section>
 
