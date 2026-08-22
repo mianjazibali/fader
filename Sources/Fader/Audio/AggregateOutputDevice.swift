@@ -62,6 +62,22 @@ final class AggregateOutputDevice {
     /// to not click.
     private let smoothedGainBuffer: UnsafeMutableBufferPointer<Float>
 
+    /// Which slots get the call AGC (see `agcEnvelopeBuffer` below) — set
+    /// once at init from each tap's source app, never mutated afterward.
+    /// A plain Swift array is fine to capture into the realtime block:
+    /// reading `boosted[i]` doesn't allocate.
+    private let callBoosted: [Bool]
+
+    /// Per-tap slow peak-follower envelope, realtime-thread-owned, used
+    /// only for slots where `callBoosted[i]` is true. Call audio reads back
+    /// much quieter than its untapped path (see CoreAudioEngine's comment
+    /// on why a flat multiplier can't fix this) — this tracks each tap's
+    /// recent peak level and derives an adaptive gain that pushes quiet
+    /// passages up toward a target level while automatically backing off
+    /// as the signal gets louder, instead of a fixed boost that's either
+    /// too quiet on quiet passages or clips on loud ones.
+    private let agcEnvelopeBuffer: UnsafeMutableBufferPointer<Float>
+
     /// Output ring buffer shared with the playback IOProc.
     private let ringBuffer: FloatRingBuffer
 
@@ -88,10 +104,13 @@ final class AggregateOutputDevice {
     init(
         outputDeviceUID: String,
         taps: [ProcessTap],
+        callBoosted: [Bool],
         ringBuffer: FloatRingBuffer
     ) throws {
         precondition(taps.count <= 32, "Phase 3 supports up to 32 taps")
+        precondition(callBoosted.count == taps.count, "callBoosted must be parallel to taps")
         self.slotCount = taps.count
+        self.callBoosted = callBoosted
         self.ringBuffer = ringBuffer
 
         let buf = UnsafeMutableBufferPointer<Float>.allocate(capacity: max(1, taps.count))
@@ -105,6 +124,10 @@ final class AggregateOutputDevice {
         let smoothbuf = UnsafeMutableBufferPointer<Float>.allocate(capacity: max(1, taps.count))
         smoothbuf.initialize(repeating: 1.0)
         self.smoothedGainBuffer = smoothbuf
+
+        let envbuf = UnsafeMutableBufferPointer<Float>.allocate(capacity: max(1, taps.count))
+        envbuf.initialize(repeating: 0)
+        self.agcEnvelopeBuffer = envbuf
 
         self.gainSlots = (0..<taps.count).map { i in
             GainSlot(
@@ -149,6 +172,7 @@ final class AggregateOutputDevice {
             buf.deallocate()
             lvlbuf.deallocate()
             smoothbuf.deallocate()
+            envbuf.deallocate()
             cbuf.deallocate()
             pbuf.deallocate()
             throw AggregateError.creationFailed(status: status)
@@ -165,6 +189,7 @@ final class AggregateOutputDevice {
         gainBuffer.deallocate()
         levelBuffer.deallocate()
         smoothedGainBuffer.deallocate()
+        agcEnvelopeBuffer.deallocate()
         counterBuffer.deallocate()
         peakBuffer.deallocate()
         didLogPtr?.deallocate()
@@ -174,6 +199,8 @@ final class AggregateOutputDevice {
         let gainPtr = gainBuffer.baseAddress!
         let levelPtr = levelBuffer.baseAddress!
         let smoothedGainPtr = smoothedGainBuffer.baseAddress!
+        let agcEnvelopePtr = agcEnvelopeBuffer.baseAddress!
+        let boosted = callBoosted
         let counterPtr = counterBuffer.baseAddress!
         let peakPtr = peakBuffer.baseAddress!
         let count = slotCount
@@ -195,6 +222,8 @@ final class AggregateOutputDevice {
                 gains: gainPtr,
                 smoothedGains: smoothedGainPtr,
                 levels: levelPtr,
+                agcEnvelopes: agcEnvelopePtr,
+                callBoosted: boosted,
                 slotCount: count,
                 ring: ring,
                 counters: counterPtr,
@@ -247,12 +276,25 @@ final class AggregateOutputDevice {
     /// dynamically queried yet anywhere in Phase 3).
     private static let maxGainStepPerSample: Float = 1.0 / (0.007 * 48000)
 
+    // Call AGC tuning — see the doc comment where callGain is computed.
+    // Untested against a real call (the harness blocks tools that touch a
+    // live call's audio directly), so these are reasoned starting points,
+    // not measured values — expect to retune target/max from real
+    // feedback.
+    private static let agcTargetPeak: Float = 0.6
+    private static let agcAttack: Float = 0.5
+    private static let agcRelease: Float = 0.05
+    private static let agcFloor: Float = 0.003
+    private static let agcMaxGain: Float = 16.0
+
     private static func captureCallback(
         input: UnsafePointer<AudioBufferList>,
         output: UnsafeMutablePointer<AudioBufferList>,
         gains: UnsafeMutablePointer<Float>,
         smoothedGains: UnsafeMutablePointer<Float>,
         levels: UnsafeMutablePointer<Float>,
+        agcEnvelopes: UnsafeMutablePointer<Float>,
+        callBoosted: [Bool],
         slotCount: Int,
         ring: FloatRingBuffer,
         counters: UnsafeMutablePointer<UInt64>,
@@ -321,6 +363,28 @@ final class AggregateOutputDevice {
                 levels[i] = tapPeak
                 if tapPeak > inputPeak { inputPeak = tapPeak }
 
+                // Call AGC: this tap's own slow peak-follower, used only to
+                // derive an adaptive multiplier on top of the user's slider
+                // gain. Fast attack (catches a loud moment quickly, so it
+                // backs off before that moment clips) / slow release (so
+                // gain doesn't audibly pump up and down between words in
+                // normal speech, only over several seconds of sustained
+                // level change). Never goes below 1.0 — this only adds
+                // gain, it never makes the tap quieter than what the
+                // slider already asked for.
+                var callGain: Float = 1.0
+                if callBoosted[i] {
+                    let envPtr = agcEnvelopes.advanced(by: i)
+                    var env = envPtr.pointee
+                    if tapPeak > env {
+                        env += (tapPeak - env) * agcAttack
+                    } else {
+                        env += (tapPeak - env) * agcRelease
+                    }
+                    envPtr.pointee = env
+                    callGain = min(agcMaxGain, max(1.0, agcTargetPeak / max(env, agcFloor)))
+                }
+
                 // Ramp the applied gain toward the target sample-by-
                 // sample rather than multiplying by a flat value for the
                 // whole buffer — an instant step here (any mute, or a
@@ -329,7 +393,7 @@ final class AggregateOutputDevice {
                 // gain 0 (unlike the old flat-multiply path did): a
                 // fresh mute still needs these samples to ramp down
                 // through, not jump straight to silence.
-                let target = gains.advanced(by: i).pointee
+                let target = gains.advanced(by: i).pointee * callGain
                 var current = smoothedGains.advanced(by: i).pointee
                 let n = min(inSamples, mixSamples)
                 for f in 0..<n {

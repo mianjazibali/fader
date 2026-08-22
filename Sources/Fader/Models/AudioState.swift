@@ -42,6 +42,21 @@ final class AudioState {
     var duckingAttackMs: Double = 120
     var duckingReleaseMs: Double = 600
 
+    /// Experimental, off by default. Normally Fader skips tap creation for
+    /// any app with mic input AND output both active (a live call) — see
+    /// CoreAudioEngine's `inLiveCall` check. Empirical testing (a
+    /// mutedWhenTapped tap against a real WhatsApp call) showed real,
+    /// non-zero audio content does come through rather than being zeroed,
+    /// contradicting the original assumption — but whether
+    /// `CATapMutedWhenTapped` actually silences the app's original output
+    /// during a *live call* specifically (vs. a regular app) was never
+    /// conclusively confirmed. If it doesn't, enabling this plays the
+    /// original call audio AND Fader's gain-scaled rerouted copy at once —
+    /// an audible echo/doubling. Opt-in so nobody hits that by surprise;
+    /// the user who wants this can flip it on and immediately hear for
+    /// themselves whether it's clean or echoes.
+    var allowVolumeControlDuringCalls: Bool = false
+
     /// The user-perceived volume for an app: its own slider (0...100%),
     /// then ducking. Deliberately NOT multiplied by systemVolume here —
     /// tapped audio is written directly into the real output device's

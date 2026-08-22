@@ -33,6 +33,13 @@ struct AudioApp: Identifiable, Equatable {
     /// about which apps we can drive).
     var supportsVolumeControl: Bool
 
+    /// True when this app currently has mic input AND output both active
+    /// (a live call) — independent of whether the user has opted into
+    /// controlling it (`AudioState.allowVolumeControlDuringCalls`). Used
+    /// to scope the call-specific gain boost to only the apps that
+    /// actually need it; see CoreAudioEngine's `gainBoost`.
+    var isInLiveCall: Bool = false
+
     /// True if the user has muted this app or turned its volume down from
     /// the default — worth keeping visible even while it's gone quiet, so
     /// muting an app can't make it (and the ability to undo the mute)
@@ -48,6 +55,7 @@ struct AudioApp: Identifiable, Equatable {
         lhs.isActive == rhs.isActive &&
         lhs.levelMeter == rhs.levelMeter &&
         lhs.pid == rhs.pid &&
-        lhs.supportsVolumeControl == rhs.supportsVolumeControl
+        lhs.supportsVolumeControl == rhs.supportsVolumeControl &&
+        lhs.isInLiveCall == rhs.isInLiveCall
     }
 }

@@ -17,6 +17,17 @@ final class CoreAudioEngine: AudioEngine {
     /// Pass `--no-gain` to disable for debugging Phase 2 detection in isolation.
     private let gainEnabled = !CommandLine.arguments.contains("--no-gain")
 
+    // A fixed multiplier here (tried 2.0, then 4.0) couldn't close the gap
+    // without risking bad clipping on loud passages — tapped call audio
+    // reads back roughly 15-25dB quieter than its untapped path (a Process
+    // Tap sits upstream of whatever extra gain-staging macOS applies to a
+    // live call's audio on its way to the speakers), and a flat gain big
+    // enough to fix the quiet parts clips the loud parts. Real fix is
+    // adaptive: AggregateOutputDevice now runs a per-tap AGC (peak-tracking
+    // auto gain, capped so it never reduces below what the slider asks for
+    // and never boosts past a hard ceiling) for any tap flagged
+    // `isInLiveCall` — see its capture callback.
+
     private var detector: AudioProcessDetector?
     private var systemVolumeListener: SystemVolumeListener?
     private var pulseTask: Task<Void, Never>?
@@ -139,15 +150,20 @@ final class CoreAudioEngine: AudioEngine {
             processIDByBundle[bundleID] = p.objectID
 
             // Apps simultaneously running mic input AND output are in a live
-            // call (voice/video). macOS silently zeroes Process Tap content
-            // for that audio (a wiretap/privacy protection, not a bug we can
-            // work around) while `CATapMutedWhenTapped` still mutes the app's
-            // real output the moment we start reading — net effect: tapping
-            // a call goes completely silent, worse than doing nothing. So we
-            // skip tap creation for these and leave their real audio path
-            // alone; the slider just goes disabled with a "—" for the call's
-            // duration (see AppRowView's `supportsVolumeControl` handling).
-            let inLiveCall = p.isRunningInput && p.isRunningOutput
+            // call (voice/video). We used to assume macOS silently zeroes
+            // Process Tap content for that audio — turned out false on
+            // direct empirical test (a mutedWhenTapped tap against a real
+            // WhatsApp call captured real, non-zero audio, not silence).
+            // What's still unconfirmed is whether `CATapMutedWhenTapped`
+            // actually silences the app's *original* output for a live call
+            // specifically — if it doesn't, tapping plays the original call
+            // audio AND our gain-scaled rerouted copy at once (an echo). So
+            // this stays off (disabled slider, "—") by default, and only
+            // taps live calls when the user explicitly opts in via Settings
+            // (`allowVolumeControlDuringCalls`) — see AudioState's doc
+            // comment on that property for the full story.
+            let rawInLiveCall = p.isRunningInput && p.isRunningOutput
+            let inLiveCall = rawInLiveCall && !state.allowVolumeControlDuringCalls
 
             // Every app — including Music, Spotify, TV, and Podcasts, which
             // used to also get an AppleScript write to their own volume
@@ -174,7 +190,8 @@ final class CoreAudioEngine: AudioEngine {
                 isMuted: existing?.isMuted ?? volumeStore.entry(for: bundleID)?.isMuted ?? false,
                 isActive: active,
                 levelMeter: existing?.levelMeter ?? 0,
-                supportsVolumeControl: supports
+                supportsVolumeControl: supports,
+                isInLiveCall: rawInLiveCall
             )
             state.upsert(app)
         }

@@ -50,6 +50,22 @@ struct SettingsView: View {
                     .opacity(state.duckingEnabled ? 1 : 0.5)
                 }
 
+                section(title: "During Calls", icon: "phone.badge.waveform") {
+                    HStack {
+                        Text("Control volume during calls")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Toggle("", isOn: $state.allowVolumeControlDuringCalls)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .labelsHidden()
+                    }
+                    Text("Experimental. Normally the slider disables itself during a live call (WhatsApp, FaceTime, etc.) since macOS doesn't guarantee the call's original audio gets silenced when Fader taps it — turning this on could cause an echo. If you hear one, turn it back off.")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 section(title: "Startup", icon: "power") {
                     HStack {
                         Text("Launch at login")

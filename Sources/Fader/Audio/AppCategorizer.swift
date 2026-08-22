@@ -32,6 +32,7 @@ enum AppCategorizer {
         "com.hnc.discord",
         "com.google.meet",
         "com.whatsapp",
+        "net.whatsapp",
         "com.signal.signal-desktop"
     ]
 

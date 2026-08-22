@@ -185,12 +185,14 @@ final class AudioGainController {
 
         var newTaps: [ProcessTap] = []
         var bundleOrder: [String] = []
+        var callBoosted: [Bool] = []
         for app in active {
             guard let pobjID = processIDByBundle[app.id] else { continue }
             do {
                 let tap = try ProcessTap(processObjectID: pobjID, bundleID: app.id)
                 newTaps.append(tap)
                 bundleOrder.append(app.id)
+                callBoosted.append(app.isInLiveCall)
                 log("created tap for \(app.id) → tapID=\(tap.tapID)")
             } catch {
                 log("Tap creation failed for \(app.id): \(error). Skipping.")
@@ -214,6 +216,7 @@ final class AudioGainController {
         let capture = try AggregateOutputDevice(
             outputDeviceUID: outputUID,
             taps: newTaps,
+            callBoosted: callBoosted,
             ringBuffer: ring
         )
 
