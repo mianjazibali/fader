@@ -155,12 +155,12 @@ private struct HeaderView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Brand gradient mini-icon with the same mark as the app icon.
+            // Brand mini-icon with the same mark as the app icon.
             ZStack {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Brand.gradient)
+                    .fill(Brand.accent)
                     .frame(width: 30, height: 30)
-                    .shadow(color: Brand.orange.opacity(0.30), radius: 6, y: 2)
+                    .shadow(color: Brand.accent.opacity(0.30), radius: 6, y: 2)
 
                 Image(systemName: "slider.vertical.3")
                     .font(.system(size: 14, weight: .semibold))
