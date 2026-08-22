@@ -76,8 +76,7 @@ private struct MainPanel: View {
         let visibleApps = state.apps.filter { $0.isActive || $0.hasCustomSettings }
 
         VStack(spacing: 0) {
-            if !state.permissionBannerDismissed,
-               state.systemAudioCaptureLikelyBlocked || state.automationPermissionDenied {
+            if !state.permissionBannerDismissed, state.systemAudioCaptureLikelyBlocked {
                 PermissionBanner(state: state)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
@@ -207,28 +206,18 @@ private struct PermissionBanner: View {
     @Bindable var state: AudioState
     private let manager = PermissionsManager()
 
-    private var permission: PermissionsManager.Permission {
-        state.systemAudioCaptureLikelyBlocked ? .systemAudioCapture : .automation
-    }
-
-    private var message: String {
-        state.systemAudioCaptureLikelyBlocked
-            ? "A tapped app has stayed silent — Fader may need System Audio Recording access."
-            : "Automation isn't granted for at least one app — its slider won't move the app's own volume."
-    }
-
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(.orange)
             VStack(alignment: .leading, spacing: 6) {
-                Text(message)
+                Text("A tapped app has stayed silent. Fader may need System Audio Recording access.")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 12) {
-                    Button("Open Settings") { manager.openSystemSettings(for: permission) }
+                    Button("Open Settings") { manager.openSystemSettings(for: .systemAudioCapture) }
                         .buttonStyle(.plain)
                         .font(.system(size: 10.5, weight: .bold))
                         .foregroundStyle(.orange)

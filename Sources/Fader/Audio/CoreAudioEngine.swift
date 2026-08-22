@@ -20,7 +20,6 @@ final class CoreAudioEngine: AudioEngine {
     private var detector: AudioProcessDetector?
     private var systemVolumeListener: SystemVolumeListener?
     private var pulseTask: Task<Void, Never>?
-    private var externalVolumePollTask: Task<Void, Never>?
 
     /// True while we're WRITING the system volume from a UI slider drag.
     /// Suppresses the listener echo so we don't fight the user's input.
@@ -28,15 +27,6 @@ final class CoreAudioEngine: AudioEngine {
 
     /// HAL process-object-ID by bundle ID — needed to feed the gain controller.
     private var processIDByBundle: [String: AudioObjectID] = [:]
-
-    /// Track which scriptable apps we've already probed so we don't fire
-    /// the permission dialog repeatedly.
-    private var probedBundles: Set<String> = []
-
-    /// Wall-clock time of the most recent user-initiated volume write per
-    /// bundle. While < 1.5s old, the external poll skips that app so its
-    /// stale reads can't overwrite the user's drag.
-    private var lastUserWriteTime: [String: Date] = [:]
 
     /// When each currently-tapped bundle's level last read as silent.
     /// System-audio-capture TCC denial is invisible to every CoreAudio
@@ -70,57 +60,6 @@ final class CoreAudioEngine: AudioEngine {
         volListener.start()
 
         startPulseLoop()
-        startExternalVolumePoll()
-    }
-
-    /// Poll the actual current volume of scriptable apps every 500ms so the
-    /// UI tracks volume changes made INSIDE those apps (e.g. user moved
-    /// Music's own volume slider). Without this, our slider stays stale.
-    private func startExternalVolumePoll() {
-        externalVolumePollTask = Task { @MainActor [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(500))
-                guard let self else { return }
-
-                // Snapshot bundle IDs we'd want to query — must be on main.
-                let scriptable = self.state.apps
-                    .filter { AppleScriptVolume.canControl(bundleID: $0.id) }
-                    .map(\.id)
-
-                for bundleID in scriptable {
-                    // Skip apps the user just touched — let our write settle
-                    // before we trust an external read.
-                    if let lastWrite = self.lastUserWriteTime[bundleID],
-                       Date().timeIntervalSince(lastWrite) < 1.5 {
-                        continue
-                    }
-
-                    let observed = await Task.detached(priority: .background) {
-                        AppleScriptVolume.getVolume(for: bundleID)
-                    }.value
-
-                    guard let observed else { continue }
-                    guard let app = self.state.apps.first(where: { $0.id == bundleID }) else { continue }
-
-                    if abs(app.volume - observed) > 0.015 {
-                        self.state.setVolume(observed, for: bundleID)
-                        // Also persist volume changes made through the app's
-                        // OWN controls (e.g. Music's own slider), not just
-                        // ones dragged in Fader — either way it's now the
-                        // user's chosen level for next launch.
-                        self.persistVolume(for: bundleID)
-                    }
-                }
-
-                // AppleScript error -1743 ("not authorized to send Apple
-                // events") is a real, non-silent signal, unlike system
-                // audio capture's TCC gate — just surface it directly.
-                let denied = AppleScriptVolume.isAutomationPermissionDenied
-                if self.state.automationPermissionDenied != denied {
-                    self.state.automationPermissionDenied = denied
-                }
-            }
-        }
     }
 
     func stop() {
@@ -130,33 +69,19 @@ final class CoreAudioEngine: AudioEngine {
         systemVolumeListener = nil
         pulseTask?.cancel()
         pulseTask = nil
-        externalVolumePollTask?.cancel()
-        externalVolumePollTask = nil
         gainController.shutdown()
     }
 
     func applyGain(_ value: Float, to appId: String) {
         state.setVolume(value, for: appId)
         pushGain(for: appId)
-        // Block external-volume poll for this bundle briefly so a stale read
-        // can't undo the user's drag before our AppleScript write lands.
-        lastUserWriteTime[appId] = Date()
         persistVolume(for: appId)
-
-        if AppleScriptVolume.canControl(bundleID: appId) {
-            AppleScriptVolume.setVolume(value, for: appId)
-        }
     }
 
     func setMuted(_ muted: Bool, for appId: String) {
         state.setMuted(muted, for: appId)
         pushGain(for: appId)
-        lastUserWriteTime[appId] = Date()
         persistVolume(for: appId)
-        if AppleScriptVolume.canControl(bundleID: appId),
-           let app = state.apps.first(where: { $0.id == appId }) {
-            AppleScriptVolume.setMuted(muted, for: appId, restoreTo: app.volume)
-        }
     }
 
     private func persistVolume(for appId: String) {
@@ -166,8 +91,6 @@ final class CoreAudioEngine: AudioEngine {
 
     func resyncAllGains() {
         for app in state.apps { pushGain(for: app.id) }
-        // Don't re-push AppleScript here — master volume is handled by
-        // system volume, per-app volume is independent.
     }
 
     // MARK: - Reconciliation
@@ -215,19 +138,6 @@ final class CoreAudioEngine: AudioEngine {
 
             processIDByBundle[bundleID] = p.objectID
 
-            // Probe AppleScript permission once per scriptable app — this
-            // also TRIGGERS macOS's permission prompt the first time, so the
-            // user gets a clear "Allow / Don't Allow" dialog instead of
-            // silent failure when they later move a slider.
-            if existing == nil,
-               AppleScriptVolume.canControl(bundleID: bundleID),
-               !probedBundles.contains(bundleID) {
-                probedBundles.insert(bundleID)
-                Task.detached(priority: .background) {
-                    _ = AppleScriptVolume.probe(bundleID: bundleID)
-                }
-            }
-
             // Apps simultaneously running mic input AND output are in a live
             // call (voice/video). macOS silently zeroes Process Tap content
             // for that audio (a wiretap/privacy protection, not a bug we can
@@ -239,11 +149,18 @@ final class CoreAudioEngine: AudioEngine {
             // duration (see AppRowView's `supportsVolumeControl` handling).
             let inLiveCall = p.isRunningInput && p.isRunningOutput
 
-            // With Phase 3 enabled, every other detected app gets per-app
-            // gain via the tap pipeline. AppleScript is still preferred when
-            // available (the in-app slider also updates) but Phase 3 covers
-            // everything else.
-            let supports = !inLiveCall && (gainEnabled || AppleScriptVolume.canControl(bundleID: bundleID))
+            // Every app — including Music, Spotify, TV, and Podcasts, which
+            // used to also get an AppleScript write to their own volume
+            // slider — is controlled purely through the tap pipeline now.
+            // Fader's slider is a relative gain multiplier on top of
+            // whatever the app is actually outputting; it never reaches
+            // into and overwrites the app's own volume setting. (The old
+            // AppleScript path did both at once for those four apps: the
+            // tap already scaled their output by Fader's gain, AND the
+            // AppleScript write scaled their *own* volume by the same
+            // amount again — so 50% on Fader's slider compounded into 25%
+            // of the app's real output instead of the 50% it displayed.)
+            let supports = !inLiveCall && gainEnabled
 
             let app = AudioApp(
                 id: bundleID,

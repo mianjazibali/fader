@@ -38,18 +38,10 @@ struct SettingsView: View {
                 section(title: "Permissions", icon: "hand.raised") {
                     PermissionRow(
                         label: "System audio capture",
-                        detail: "Lets Fader read and adjust each app's audio. Required for every app except Music, Spotify, TV, and Podcasts.",
+                        detail: "Lets Fader read and adjust each app's own audio, relative to whatever volume it's already playing at.",
                         isOK: !state.systemAudioCaptureLikelyBlocked,
-                        problemDetail: "A tapped app has stayed silent — capture may not be permitted.",
+                        problemDetail: "A tapped app has stayed silent. Capture may not be permitted.",
                         permission: .systemAudioCapture
-                    )
-                    Divider().padding(.vertical, 2)
-                    PermissionRow(
-                        label: "Automation",
-                        detail: "Lets Fader also move Music, Spotify, TV, and Podcasts' own volume sliders to match.",
-                        isOK: !state.automationPermissionDenied,
-                        problemDetail: "Not granted for at least one app.",
-                        permission: .automation
                     )
                 }
 

@@ -13,12 +13,11 @@ final class AudioState {
     /// Center, same as any other app).
     var systemVolume: Float = 1.0
 
-    /// Behaviorally-inferred permission problems (see CoreAudioEngine) —
-    /// neither Automation nor system-audio-capture TCC status can be
-    /// queried directly, so both are detected from what actually happens
-    /// (an AppleScript -1743 error; a tapped app staying silent). Surfaced
-    /// as a dismissible banner + a status row in Settings, not a hard gate.
-    var automationPermissionDenied: Bool = false
+    /// Behaviorally-inferred permission problem (see CoreAudioEngine) —
+    /// system-audio-capture TCC status can't be queried directly, so it's
+    /// detected from what actually happens (a tapped, active app staying
+    /// silent). Surfaced as a dismissible banner + a status row in
+    /// Settings, not a hard gate.
     var systemAudioCaptureLikelyBlocked: Bool = false
     /// "Not now" on the main-panel banner — resets on relaunch, so a still-
     /// unresolved permission surfaces again eventually without nagging on

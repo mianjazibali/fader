@@ -67,8 +67,13 @@ investment.
   instead of disappearing and silently reappearing muted later
 - System-volume sync: per-app volume is relative to system volume, so
   F11/F12 and Control Center still work as expected
-- AppleScript fallback for Music/Spotify/TV/Podcasts (also updates the
-  app's own visible volume slider)
+- Every app's volume is purely relative to its own actual output, Fader
+  never reaches into and overwrites an app's own volume control. Music,
+  Spotify, TV, and Podcasts used to also get an AppleScript write to
+  their own volume slider on top of the tap gain — the two compounded,
+  so 50% on Fader's slider was actually 25% of the app's real output.
+  Removed the AppleScript path entirely; the tap pipeline is now the
+  only mechanism, for every app
 - Single-instance enforcement — a non-blocking `flock()` on a fixed file,
   held for the process's lifetime. A second launch (double-click, `open
   -a`, a stray dev build) while the real instance is running exits
@@ -80,14 +85,13 @@ investment.
   `UserDefaults` (debounced writes), restored the next time that app is
   seen, whether the change came from Fader's own slider or the app's
   own native volume control
-- **Permissions onboarding** — neither Automation nor system-audio-capture
-  TCC status has a synchronous "check without prompting" API (the
-  latter's denial is completely silent — every CoreAudio call still
-  returns `noErr`, the tap's buffers just stay zero), so both are
-  inferred behaviorally: AppleScript's real `-1743` error for
-  Automation, and sustained silence on an installed, active tap for
-  audio capture. Surfaced as a dismissible in-app banner plus a
-  permanent status row (with a direct System Settings link) in Settings
+- **Permissions onboarding** — system-audio-capture TCC status has no
+  synchronous "check without prompting" API, and its denial is
+  completely silent (every CoreAudio call still returns `noErr`, the
+  tap's buffers just stay zero), so it's inferred behaviorally: sustained
+  silence on an installed, active tap. Surfaced as a dismissible in-app
+  banner plus a permanent status row (with a direct System Settings
+  link) in Settings
 - **Smoother active-set changes** — switching which apps are tapped now
   only rebuilds the capture side (taps + aggregate device); the ring
   buffer and the playback IOProc actually wired to the speakers stay
@@ -123,11 +127,6 @@ investment.
 - **Tapped apps quieter than native at 100%** — see Phase 3 above
 - **Duplicate running instance** — see Phase 3 above
 
-### Rebrand (done)
-- Full identity change from the original fork: name, bundle ID
-  (`com.fader.app`), app icon, brand colors (now a single flat accent,
-  matching the website), website copy and design
-
 ### Distribution (partially done)
 - `.dmg` installer (`make dmg`) with an Applications-folder symlink for
   drag-to-install, uploaded alongside the `.zip` release asset
@@ -135,15 +134,17 @@ investment.
 - Ad-hoc signed (not yet Developer ID / notarized — see below)
 
 ### Website (done)
-- Full redesign: flat, editorial, single-accent-color system instead of
-  the original dark-glassmorphic template look
+- Flat, editorial, single-accent-color design system, matching the app's
+  own glass/accent look for the live demo panel specifically
 - **Real interactive demo**, not screenshots — the hero panel's sliders,
   mute icons, and "simulate a call" button are fully functional and
   drive two real (CC0-licensed) audio loops mixed live through the Web
   Audio API, ducking exactly like the real app
-- Download button triggers an immediate `.dmg` download and a dismissible
-  support-modal (Buy Me a Coffee handoff — no payment details ever
-  handled on our side)
+- Download asks first (support optional, never gated), then downloads
+  and shows the real first-launch steps. Support uses Buy Me a Coffee's
+  own embedded checkout, not a bare outbound link, no payment details
+  ever handled on our side
+- Public roadmap section, synced with this file
 
 ### Quality of life
 - `make sign / make run / make debug / make icon / make dmg` workflow

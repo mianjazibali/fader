@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fader — Volume Mixer for Mac | Per-App Volume Control</title>
-<meta name="description" content="Fader is a free, open-source volume mixer for Mac. Give every app its own volume slider — Music, Zoom, Chrome, anything — and let calls quiet everything else automatically.">
+<title>Fader: Volume Mixer for Mac | Per-App Volume Control</title>
+<meta name="description" content="Fader is a free volume mixer for Mac. Give every app its own volume slider (Music, Zoom, Chrome, anything), and let calls quiet everything else automatically.">
+<link rel="canonical" href="https://mianjazibali.github.io/fader/">
+<meta name="robots" content="index, follow">
+<meta name="keywords" content="volume mixer for mac, per-app volume control, mac app volume, lower app volume during calls, macOS audio mixer">
 
 <!-- Open Graph -->
-<meta property="og:title" content="Fader — Volume Mixer for Mac">
-<meta property="og:description" content="Fader is a free, open-source volume mixer for Mac. Give every app its own volume slider — Music, Zoom, Chrome, anything — and let calls quiet everything else automatically.">
+<meta property="og:title" content="Fader: Volume Mixer for Mac">
+<meta property="og:description" content="Fader is a free volume mixer for Mac. Give every app its own volume slider (Music, Zoom, Chrome, anything), and let calls quiet everything else automatically.">
 <meta property="og:url" content="https://mianjazibali.github.io/fader/">
 <meta property="og:image" content="https://mianjazibali.github.io/fader/og-card.png?v=3">
 <meta property="og:image:secure_url" content="https://mianjazibali.github.io/fader/og-card.png?v=3">
@@ -21,6 +24,26 @@
 <meta name="twitter:image" content="https://mianjazibali.github.io/fader/og-card.png?v=3">
 
 <link rel="icon" type="image/png" href="https://mianjazibali.github.io/fader/favicon.png?v=2">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Fader",
+  "url": "https://mianjazibali.github.io/fader/",
+  "description": "Per-app volume mixer for Mac. Give every app its own volume slider and let Fader quiet everything else automatically during calls.",
+  "operatingSystem": "macOS 14.2+",
+  "applicationCategory": "UtilitiesApplication",
+  "softwareVersion": "0.3.0",
+  "downloadUrl": "https://github.com/mianjazibali/fader/releases/latest",
+  "license": "https://github.com/mianjazibali/fader/blob/main/LICENSE",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+}
+</script>
 
 <style>
   /* Design system: flat, high-contrast, editorial — warm paper background,
@@ -127,7 +150,17 @@
     margin-bottom: 30px;
     max-width: 560px;
   }
-  .hero p.lede strong { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2.5px; text-underline-offset: 3px; }
+  /* border-bottom instead of text-decoration: on a wrapped multi-line
+     inline element, text-decoration's underline can run past its own
+     line box and get visually cut by the next line. box-decoration-break
+     renders a clean, separately-clipped border under each line instead. */
+  .hero p.lede strong {
+    text-decoration: none;
+    border-bottom: 2.5px solid var(--accent);
+    padding-bottom: 3px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
   .cta-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
   .btn {
     display: inline-flex; align-items: center; gap: 8px;
@@ -495,7 +528,7 @@
       <a class="nav-link" href="#features">Features</a>
       <a class="nav-link" href="#roadmap">Roadmap</a>
       <a class="nav-link" href="https://github.com/mianjazibali/fader">GitHub</a>
-      <button class="btn-download" onclick="startDownload()">Download v0.3.0</button>
+      <button class="btn-download" onclick="startDownload()">Free Download</button>
     </div>
   </div>
 </nav>
@@ -503,19 +536,19 @@
 <header class="hero container">
   <div class="hero-grid">
     <div class="hero-copy">
-      <p class="kicker">Free · Open source · macOS 14.2+</p>
+      <p class="kicker">Supports macOS 14.2+</p>
       <h1>Turn any app down.<br>Just that one.</h1>
       <p class="lede">
         One app too loud? One notification sound ruining a call? Give
-        <strong>every app its own volume slider</strong> — Music, Zoom, Chrome,
-        anything making noise — and let Fader quiet everything else the
+        <strong>every app its own volume slider</strong> (Music, Zoom, Chrome,
+        anything making noise), and let Fader quiet everything else the
         moment a call starts.
       </p>
       <div class="cta-row">
-        <button class="btn btn-primary" onclick="startDownload()">Download v0.3.0 ↓</button>
+        <button class="btn btn-primary" onclick="startDownload()">Free Download ↓</button>
         <a class="btn btn-ghost" href="https://github.com/mianjazibali/fader">View source →</a>
       </div>
-      <p class="meta-line">MIT licensed, fully open source · No account · No telemetry</p>
+      <p class="meta-line">No sign-up · No tracking</p>
     </div>
 
     <div class="hero-demo" id="demo">
@@ -564,17 +597,17 @@
 
   <div class="benefit-grid">
     <div class="benefit-card">
-      <p class="benefit-eyebrow">01 — Per-app control</p>
+      <p class="benefit-eyebrow">01 · Per-app control</p>
       <h3 class="benefit-title">Turn down the app. Not everything.</h3>
-      <p class="benefit-desc">Every app making noise gets its own slider. Drag Spotify down without touching your Zoom call — stop choosing between the two.</p>
+      <p class="benefit-desc">Every app making noise gets its own slider. Drag Spotify down without touching your Zoom call, and stop choosing between the two.</p>
     </div>
     <div class="benefit-card">
-      <p class="benefit-eyebrow">02 — Auto-lower for calls</p>
+      <p class="benefit-eyebrow">02 · Auto-lower for calls</p>
       <h3 class="benefit-title">Never scramble for the pause button.</h3>
-      <p class="benefit-desc">The second Zoom, Teams, or Slack picks up, everything else quiets down on its own — then comes right back when the call ends.</p>
+      <p class="benefit-desc">The second Zoom, Teams, or Slack picks up, everything else quiets down on its own, then comes right back when the call ends.</p>
     </div>
     <div class="benefit-card">
-      <p class="benefit-eyebrow">03 — Instant mute</p>
+      <p class="benefit-eyebrow">03 · Instant mute</p>
       <h3 class="benefit-title">Silence one app. Instantly.</h3>
       <p class="benefit-desc">Tap the speaker icon and that one app goes quiet. Everything else keeps playing exactly as it was.</p>
     </div>
@@ -585,14 +618,14 @@
     <span class="trust-pill"><span class="dot"></span>No mic access, ever</span>
     <span class="trust-pill"><span class="dot"></span>Menu bar only, no Dock icon</span>
     <span class="trust-pill"><span class="dot"></span>Works with your volume keys</span>
-    <span class="trust-pill"><span class="dot"></span>Free &amp; open source, MIT licensed</span>
+    <span class="trust-pill"><span class="dot"></span>No account needed</span>
   </div>
 </section>
 
 <section id="roadmap" class="container">
   <p class="section-kicker">Roadmap</p>
   <h2>Where Fader is headed next</h2>
-  <p class="section-sub">Fader already works today — here's what's next.</p>
+  <p class="section-sub">Fader already works today. Here's what's next.</p>
 
   <div class="roadmap-list">
     <div class="roadmap-row roadmap-next">
@@ -605,8 +638,8 @@
     <div class="roadmap-row roadmap-goal">
       <span class="roadmap-tag">After that</span>
       <div>
-        <h3 class="roadmap-title">Remember your volumes</h3>
-        <p class="roadmap-desc">Per-app levels persist across launches, so Chrome doesn't go back to 100% every time you restart your Mac.</p>
+        <h3 class="roadmap-title">Global hotkeys</h3>
+        <p class="roadmap-desc">Adjust the frontmost app's volume from anywhere, without opening Fader first.</p>
       </div>
     </div>
   </div>
@@ -641,7 +674,7 @@
 
     <div class="modal-phase modal-phase-ask">
       <h3>Fader is free, but we would love your support</h3>
-      <p class="modal-body">Even a small coffee makes a real difference — it helps keep Fader alive and moving forward.</p>
+      <p class="modal-body">Even a small coffee makes a real difference. It helps keep Fader alive and moving forward.</p>
       <p class="modal-body">Your support isn't just a donation, it's a reminder that this is worth building.</p>
       <p class="modal-body">Thank you for being part of this journey. Every bit of support means more than you know. ❤️</p>
       <div class="modal-actions">
@@ -656,10 +689,10 @@
       <p class="modal-body">Quick heads up: Fader isn't on Apple's paid developer program yet, so macOS blocks it the first time you open it. Takes about 10 seconds to clear, and only happens once:</p>
       <ol class="install-steps-list">
         <li>Open <strong>Fader.dmg</strong> and drag Fader into <strong>Applications</strong>, then open it.</li>
-        <li>macOS says it's blocked — that's expected, not an error.</li>
+        <li>macOS says it's blocked (that's expected, not an error).</li>
         <li>Open <strong>System Settings → Privacy &amp; Security</strong>, scroll to Security, and click <strong>Open Anyway</strong> (confirm your password if it asks).</li>
       </ol>
-      <p class="modal-body install-apple-link">Fader's fully open source, so you can read every line first — or see <a href="https://support.apple.com/en-gb/guide/mac-help/mh40616/mac" target="_blank" rel="noopener">Apple's own instructions</a> for this step.</p>
+      <p class="modal-body install-apple-link">You can check exactly what Fader does before running it, or see <a href="https://support.apple.com/en-gb/guide/mac-help/mh40616/mac" target="_blank" rel="noopener">Apple's own instructions</a> for this step.</p>
       <button class="btn btn-primary modal-got-it" onclick="closeSupportModal()">Got it</button>
     </div>
   </div>
@@ -930,7 +963,7 @@
      hidden (see #bmc-wbtn above) and triggered programmatically instead. -->
 <script data-name="BMC-Widget" data-cfasync="false"
   src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
-  data-id="mianjazibali" data-description="Support Fader — thanks for keeping it free!"
+  data-id="mianjazibali" data-description="Support Fader, thanks for keeping it free!"
   data-message="" data-color="#FF5A1F" data-position="Right"
   data-x_margin="18" data-y_margin="18"></script>
 

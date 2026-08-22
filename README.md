@@ -118,19 +118,19 @@ make dmg             # build a distributable Fader.dmg (Applications symlink inc
 
 ## Permissions
 
-- **AppleScript Automation** — for compatible apps (Music, Spotify, TV,
-  Podcasts), Fader uses AppleScript to also move the app's own volume
-  slider. macOS will prompt "Fader wants to control X" on first contact.
 - **System Audio Capture (TCC)** — Process Taps require an explicit grant
-  on macOS 14.4+. The privacy string is in `Info.plist`.
-- **In-app permissions status** — Settings shows a live status row for
-  both, with a direct System Settings link if either isn't working.
-  Neither permission exposes a synchronous "check without prompting"
-  API — Automation denial is inferred from AppleScript's real `-1743`
-  error, and audio-capture denial (which is otherwise completely
-  silent — CoreAudio returns `noErr` either way, the tap's buffers just
-  stay zero) is inferred from a tapped, active app staying silent for
-  several seconds.
+  on macOS 14.4+. The privacy string is in `Info.plist`. This is the only
+  permission Fader needs to control any app's volume — every app,
+  including Music, Spotify, TV, and Podcasts, is controlled purely
+  through the tap pipeline (relative gain on top of whatever the app is
+  actually outputting), never by reaching into and overwriting the app's
+  own volume setting.
+- **In-app permissions status** — Settings shows a live status row with
+  a direct System Settings link if it isn't working. There's no
+  synchronous "check without prompting" API for this permission, and its
+  denial is otherwise completely silent (CoreAudio returns `noErr`
+  either way, the tap's buffers just stay zero), so it's inferred from a
+  tapped, active app staying silent for several seconds.
 - **No microphone permission requested, ever.** Fader will trigger macOS's
   *purple* system-audio/screen-recording indicator while running — that's
   the correct category for Process Taps, not a bug. It will never trigger
@@ -152,8 +152,8 @@ fader/
 │   ├── Models/                      AudioApp, AudioState (@Observable)
 │   ├── Audio/                       Detector, Engine (Core/Mock), GainController,
 │   │                                ProcessTap, AggregateOutputDevice,
-│   │                                PlaybackDevice, RingBuffer, AppleScriptVolume, …
-│   ├── Services/PermissionsManager  Accessibility hooks (future hotkeys)
+│   │                                PlaybackDevice, RingBuffer, …
+│   ├── Services/PermissionsManager  Accessibility + system-audio-capture hooks
 │   ├── UI/                          ControlCenterView, AppRowView,
 │   │                                FluidSlider, SettingsView, Brand, …
 │   └── Resources/Info.plist / Fader.entitlements
@@ -207,6 +207,14 @@ Real bugs, found and fixed on top of the original codebase:
   was already running would spin up a second CoreAudioEngine (its own
   Process Taps and aggregate device) on the same taps. Now enforced via a
   non-blocking file lock; a second launch exits immediately.
+- **Fader's slider wasn't purely relative for Music/Spotify/TV/Podcasts** —
+  those four apps used to also get an AppleScript write to their own
+  volume slider on top of the tap gain, so the two compounded: 50% on
+  Fader's slider was actually 25% of the app's real output, not 50%.
+  Removed the AppleScript path entirely; every app, including those four,
+  is now controlled purely through the tap pipeline, a relative gain
+  multiplier on top of whatever the app is actually outputting, never a
+  rewrite of the app's own volume setting.
 
 See [ROADMAP.md](ROADMAP.md) for what's shipped by phase and what's still
 open.

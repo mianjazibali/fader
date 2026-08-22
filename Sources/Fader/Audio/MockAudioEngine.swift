@@ -53,7 +53,7 @@ final class MockAudioEngine: AudioEngine {
                 isMuted: false,
                 isActive: f.id == "com.spotify.client" || f.id == "com.google.Chrome",
                 levelMeter: 0,
-                supportsVolumeControl: AppleScriptVolume.canControl(bundleID: f.id)
+                supportsVolumeControl: true
             )
             state.upsert(app)
         }
