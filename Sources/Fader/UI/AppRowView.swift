@@ -54,7 +54,8 @@ struct AppRowView: View {
                     guard app.supportsVolumeControl else { return }
                     withAnimation(.snappy) { engine.setMuted(!app.isMuted, for: app.id) }
                     HapticFeedback.tap()
-                }
+                },
+                isMuted: app.isMuted
             )
             .disabled(!app.supportsVolumeControl)
             .opacity(app.supportsVolumeControl ? 1.0 : 0.5)

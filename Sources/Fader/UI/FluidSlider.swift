@@ -18,6 +18,10 @@ struct FluidSlider: View {
     var levelMeter: Double = 0
     /// Tapping the min icon (e.g. mute toggle) — nil makes it non-interactive.
     var onMinIconTap: (() -> Void)? = nil
+    /// Drives the min icon's button styling — a bare glyph with no
+    /// resting-state background read as "just an icon," not something
+    /// clickable, until you happened to hover it.
+    var isMuted: Bool = false
 
     @State private var isDragging = false
 
@@ -67,7 +71,7 @@ struct FluidSlider: View {
                 Image(systemName: maxIcon)
                     .font(.system(size: height * 0.48, weight: .semibold))
                     .foregroundStyle(Color.primary.opacity(0.82))
-                    .frame(width: height * 0.85)
+                    .frame(width: height, height: height)
             }
         }
         .frame(height: height)
@@ -75,16 +79,32 @@ struct FluidSlider: View {
 
     @ViewBuilder
     private func minIconView(_ name: String) -> some View {
+        let interactive = onMinIconTap != nil
         let glyph = Image(systemName: name)
-            .font(.system(size: height * 0.48, weight: .semibold))
-            .foregroundStyle(Color.primary.opacity(0.82))
-            .frame(width: height * 0.85)
+            .font(.system(size: height * 0.42, weight: .semibold))
+            .foregroundStyle(isMuted ? Color.red : Color.primary.opacity(0.82))
+            .frame(width: height, height: height)
+            .background(
+                Circle().fill(
+                    interactive
+                        ? (isMuted ? Color.red.opacity(0.14) : Color.primary.opacity(0.07))
+                        : .clear
+                )
+            )
+            .overlay(
+                Circle().strokeBorder(
+                    interactive
+                        ? (isMuted ? Color.red.opacity(0.35) : Color.primary.opacity(0.14))
+                        : .clear,
+                    lineWidth: 1
+                )
+            )
             .contentTransition(.symbolEffect(.replace))
-            .contentShape(Rectangle())
+            .contentShape(Circle())
             .onTapGesture { onMinIconTap?() }
 
-        if onMinIconTap != nil {
-            glyph.help("Mute")
+        if interactive {
+            glyph.help(isMuted ? "Unmute" : "Mute")
         } else {
             glyph
         }
