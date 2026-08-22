@@ -366,11 +366,15 @@
     font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
     padding: 5px 10px; border: 1.5px solid var(--line);
   }
-  .roadmap-done .roadmap-tag { color: var(--success); border-color: var(--success); }
   .roadmap-next .roadmap-tag { background: var(--accent); border-color: var(--accent); color: var(--paper); }
   .roadmap-goal .roadmap-tag { color: var(--muted); }
   .roadmap-title { font-size: 19px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 8px; }
   .roadmap-desc { color: var(--muted); font-size: 15px; line-height: 1.55; max-width: 620px; }
+  .roadmap-full-link {
+    display: inline-block; margin-top: 24px;
+    color: var(--accent); font-weight: 700; font-size: 15px; text-decoration: none;
+  }
+  .roadmap-full-link:hover { text-decoration: underline; }
 
   .trust-row { display: flex; flex-wrap: wrap; gap: 10px; }
   .trust-pill {
@@ -587,32 +591,27 @@
 
 <section id="roadmap" class="container">
   <p class="section-kicker">Roadmap</p>
-  <h2>Free today. Fewer speed bumps tomorrow.</h2>
-  <p class="section-sub">Fader is a real, working app right now — everything below is about removing friction, not features.</p>
+  <h2>Where Fader is headed next</h2>
+  <p class="section-sub">Fader already works today — here's what's next.</p>
 
   <div class="roadmap-list">
-    <div class="roadmap-row roadmap-done">
-      <span class="roadmap-tag">Shipped</span>
-      <div>
-        <h3 class="roadmap-title">Free, open-source volume mixer</h3>
-        <p class="roadmap-desc">Per-app sliders, auto-lower for calls, instant mute — built on real CoreAudio Process Taps, not a hack. Live today, MIT licensed.</p>
-      </div>
-    </div>
     <div class="roadmap-row roadmap-next">
       <span class="roadmap-tag">Next</span>
       <div>
-        <h3 class="roadmap-title">No more Gatekeeper warning</h3>
-        <p class="roadmap-desc">Proper Apple Developer ID signing + notarization, so first launch just opens — no detour through System Settings. Needs an active Apple Developer Program membership ($99 a year), which is exactly what a coffee here goes toward.</p>
+        <h3 class="roadmap-title">Release on the Mac App Store</h3>
+        <p class="roadmap-desc">Needs an active Apple Developer Program membership ($99 a year) plus real engineering: the App Store's sandbox and the Process Tap API Fader uses for per-app audio don't currently get along. Every coffee goes straight toward it.</p>
       </div>
     </div>
     <div class="roadmap-row roadmap-goal">
-      <span class="roadmap-tag">Goal</span>
+      <span class="roadmap-tag">After that</span>
       <div>
-        <h3 class="roadmap-title">Mac App Store</h3>
-        <p class="roadmap-desc">The same membership unlocks this too — the long-term goal. It'll also take real engineering, not just the fee: the App Store's sandbox and the Process Tap API Fader uses for per-app audio don't currently get along.</p>
+        <h3 class="roadmap-title">Remember your volumes</h3>
+        <p class="roadmap-desc">Per-app levels persist across launches, so Chrome doesn't go back to 100% every time you restart your Mac.</p>
       </div>
     </div>
   </div>
+
+  <a class="roadmap-full-link" href="https://github.com/mianjazibali/fader/blob/main/ROADMAP.md" target="_blank" rel="noopener">See the full roadmap on GitHub →</a>
 </section>
 
 <footer>
@@ -642,8 +641,10 @@
 
     <div class="modal-phase modal-phase-ask">
       <span class="modal-emoji">☕</span>
-      <h3>Help us reach the App Store</h3>
-      <p class="modal-body">Free, period — this never gates your download. One $99 fee is all that stands between Fader and the App Store. Your coffee gets us there.</p>
+      <h3>If Fader's helped you, we'd love your support</h3>
+      <p class="modal-body">Even a small coffee makes a real difference — it goes straight toward the $99 Apple Developer fee standing between Fader and the App Store.</p>
+      <p class="modal-body">Your support isn't just a donation, it's a reminder that this is worth building. Free, period — it never gates your download.</p>
+      <p class="modal-body">Thank you for being part of this journey. Every bit of support means more than you know. ❤️</p>
       <div class="modal-actions">
         <button class="btn btn-support" id="supportBtn" onclick="openSupportWidget()">Support on Buy Me a Coffee</button>
         <button class="modal-skip" onclick="beginDownload()">No thanks, just download</button>
