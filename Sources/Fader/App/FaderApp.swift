@@ -93,8 +93,15 @@ struct FaderApp: App {
         // here silently no-ops (methods on a nil AppKit global don't
         // trap the way you'd expect) and both the activation and the
         // alert never actually happen.
+        //
+        // Deliberately NOT touching activation policy here (no
+        // `.regular`/`.accessory` flip) — Info.plist's LSUIElement
+        // already makes this an accessory app, and accessory apps can
+        // still activate and show alerts. Flipping policy back and forth
+        // this early turned out to reliably break MenuBarExtra's status
+        // item from ever registering afterward — the app would launch
+        // and run with no crash, just with no menu bar icon, ever.
         let app = NSApplication.shared
-        app.setActivationPolicy(.regular)
         app.activate(ignoringOtherApps: true)
 
         let alert = NSAlert()
@@ -117,13 +124,7 @@ struct FaderApp: App {
         // a moment to actually release the flock on exit. A few short
         // retries covers that without risking a real hang.
         for _ in 0..<20 {
-            if acquireSingleInstanceLock() {
-                // Back to a pure menu-bar accessory app — the .regular
-                // bump above was only so the alert could reliably become
-                // frontmost.
-                app.setActivationPolicy(.accessory)
-                return
-            }
+            if acquireSingleInstanceLock() { return }
             usleep(150_000)
         }
 
