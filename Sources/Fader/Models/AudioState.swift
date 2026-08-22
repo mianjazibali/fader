@@ -18,12 +18,21 @@ final class AudioState {
     var duckingAttackMs: Double = 120
     var duckingReleaseMs: Double = 600
 
-    /// The user-perceived volume for an app: its own slider (0...100%,
-    /// relative to the system volume) scaled by the actual system volume,
-    /// then ducking. E.g. system at 50% + app slider at 50% = 25% effective.
+    /// The user-perceived volume for an app: its own slider (0...100%),
+    /// then ducking. Deliberately NOT multiplied by systemVolume here —
+    /// tapped audio is written directly into the real output device's
+    /// buffer (PlaybackDevice), and macOS's system volume is a
+    /// device-level property that gets applied to whatever's in that
+    /// buffer regardless of which client wrote it. The hardware already
+    /// scales tapped apps by systemVolume once, same as everything else;
+    /// multiplying it in here too meant tapped apps got attenuated by
+    /// systemVolume TWICE (systemVolume² vs untapped apps' systemVolume¹)
+    /// — at 100% that made every tapped app quieter than its own native,
+    /// untapped volume instead of matching it. Hardware scaling alone is
+    /// enough to keep tapped apps in sync with F11/F12 and Control Center.
     func effectiveVolume(for app: AudioApp) -> Float {
         guard !app.isMuted else { return 0 }
-        let base = app.volume * systemVolume
+        let base = app.volume
         if duckingEnabled, isAnyCommunicationActive, app.category != .communication {
             return base * (1.0 - duckingAmount)
         }
