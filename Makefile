@@ -92,6 +92,7 @@ dmg: sign
 	@# we also stamp one directly onto the file via its resource fork —
 	@# same "has custom icon" mechanism, just applied to the outer file
 	@# instead of the volume root.
+	@rm -f /tmp/fader-dmg-icon.icns /tmp/fader-dmg-icon.rsrc
 	@cp Resources/Icon/AppIcon.icns /tmp/fader-dmg-icon.icns
 	@sips -i /tmp/fader-dmg-icon.icns >/dev/null
 	@DeRez -only icns /tmp/fader-dmg-icon.icns > /tmp/fader-dmg-icon.rsrc

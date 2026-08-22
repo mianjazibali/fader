@@ -1,81 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- The canonical Fader mark: flat accent square + three vertical bars at
+     different heights. Same glyph, same flat single color (#FF5A1F), as
+     the website's nav/footer/demo mark — this file is the one source of
+     truth every other icon (favicon, DMG icon, Dock/Finder icon, menu
+     bar icon, in-app badge) is generated or drawn from. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <!-- Amber → orange → red-orange → crimson gradient (warm "hot signal" mixer palette,
-         deliberately distinct from the old cyan/blue/violet/magenta identity) -->
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%"   stop-color="#FFD60A"/>
-      <stop offset="35%"  stop-color="#FF8A00"/>
-      <stop offset="75%"  stop-color="#FF3B30"/>
-      <stop offset="100%" stop-color="#D0021B"/>
-    </linearGradient>
-
-    <!-- Top sheen -->
-    <linearGradient id="gloss" x1="50%" y1="0%" x2="50%" y2="55%">
-      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.40"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
-    </linearGradient>
-
-    <!-- Bottom shade for depth -->
-    <linearGradient id="bottomShade" x1="50%" y1="55%" x2="50%" y2="100%">
-      <stop offset="0%"   stop-color="#000000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.22"/>
-    </linearGradient>
-
-    <!-- Soft white-edge gradient on the fader caps for a liquid/glassy look -->
-    <linearGradient id="cap" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%"   stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#FFEFE1"/>
-    </linearGradient>
-
-    <!-- Glow filter -->
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="14" result="b1"/>
-      <feMerge>
-        <feMergeNode in="b1"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-
     <clipPath id="squircle">
       <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225"/>
     </clipPath>
   </defs>
 
   <g clip-path="url(#squircle)">
-    <rect width="1024" height="1024" fill="url(#bg)"/>
-    <rect width="1024" height="1024" fill="url(#bottomShade)"/>
-
-    <!-- Three mixing-board faders at different levels — the literal "Fader"
-         glyph: a track per app/channel, a cap showing its current level.
-         Built as chunky rounded shapes so it reads clearly at 16px. -->
-
-    <!-- Tracks (fader slots) -->
-    <g opacity="0.32" fill="#FFFFFF">
-      <rect x="306" y="260" width="28" height="504" rx="14" ry="14"/>
-      <rect x="498" y="260" width="28" height="504" rx="14" ry="14"/>
-      <rect x="690" y="260" width="28" height="504" rx="14" ry="14"/>
+    <rect width="1024" height="1024" fill="#FF5A1F"/>
+    <!-- Bars scaled 42x from the 16-unit web glyph (M3 12V4 M8 13V3 M13 10V6),
+         centered with equal margin on all sides. -->
+    <g stroke="#FFFFFF" stroke-width="84" stroke-linecap="round" fill="none">
+      <path d="M302 680V344"/>
+      <path d="M512 722V302"/>
+      <path d="M722 596V428"/>
     </g>
-
-    <!-- Filled portion below each cap, like an LED level strip -->
-    <g opacity="0.55" fill="#FFFFFF">
-      <rect x="306" y="380" width="28" height="384" rx="14" ry="14"/>
-      <rect x="498" y="620" width="28" height="144" rx="14" ry="14"/>
-      <rect x="690" y="480" width="28" height="284" rx="14" ry="14"/>
-    </g>
-
-    <!-- Caps (fader thumbs) -->
-    <g filter="url(#glow)" fill="url(#cap)">
-      <rect x="240" y="348" width="160" height="64" rx="22" ry="22"/>
-      <rect x="432" y="588" width="160" height="64" rx="22" ry="22"/>
-      <rect x="624" y="448" width="160" height="64" rx="22" ry="22"/>
-    </g>
-
-    <!-- Top glossy highlight -->
-    <rect width="1024" height="1024" fill="url(#gloss)"/>
   </g>
-
-  <!-- Outer rim for definition -->
-  <rect x="1" y="1" width="1022" height="1022" rx="224" ry="224"
-        fill="none" stroke="#000000" stroke-opacity="0.10" stroke-width="2"/>
 </svg>

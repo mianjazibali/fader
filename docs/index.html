@@ -20,7 +20,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://mianjazibali.github.io/fader/og-card.png?v=3">
 
-<link rel="icon" type="image/png" href="https://mianjazibali.github.io/fader/favicon.png">
+<link rel="icon" type="image/png" href="https://mianjazibali.github.io/fader/favicon.png?v=2">
 
 <style>
   /* Design system: flat, high-contrast, editorial — warm paper background,
@@ -64,6 +64,8 @@
   /* Nav */
   nav {
     border-bottom: 1.5px solid var(--line);
+    position: sticky; top: 0; z-index: 50;
+    background: var(--paper);
   }
   nav .inner {
     display: flex; align-items: center; gap: 18px;
@@ -351,6 +353,25 @@
   }
   .benefit-desc { color: var(--muted); font-size: 15px; line-height: 1.5; }
 
+  /* Roadmap — a ledger-style list, same hairline language as the benefit
+     grid above, but a vertical progression (shipped → next → goal)
+     instead of three equal cards. */
+  .roadmap-list { border-top: 1.5px solid var(--line); }
+  .roadmap-row {
+    display: grid; grid-template-columns: 112px 1fr; gap: 24px;
+    padding: 26px 0; border-bottom: 1.5px solid var(--line);
+  }
+  .roadmap-tag {
+    justify-self: start; height: fit-content;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+    padding: 5px 10px; border: 1.5px solid var(--line);
+  }
+  .roadmap-done .roadmap-tag { color: var(--success); border-color: var(--success); }
+  .roadmap-next .roadmap-tag { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+  .roadmap-goal .roadmap-tag { color: var(--muted); }
+  .roadmap-title { font-size: 19px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 8px; }
+  .roadmap-desc { color: var(--muted); font-size: 15px; line-height: 1.55; max-width: 620px; }
+
   .trust-row { display: flex; flex-wrap: wrap; gap: 10px; }
   .trust-pill {
     display: inline-flex; align-items: center; gap: 7px;
@@ -450,6 +471,7 @@
     .oss-tag { display: none; }
     .panel-mock { width: 100%; max-width: 380px; }
     .benefit-grid { grid-template-columns: 1fr; }
+    .roadmap-row { grid-template-columns: 1fr; gap: 10px; }
   }
 </style>
 </head>
@@ -467,6 +489,7 @@
     <div class="nav-right">
       <a class="nav-link" href="#demo">Demo</a>
       <a class="nav-link" href="#features">Features</a>
+      <a class="nav-link" href="#roadmap">Roadmap</a>
       <a class="nav-link" href="https://github.com/mianjazibali/fader">GitHub</a>
       <button class="btn-download" onclick="startDownload()">Download v0.2.0</button>
     </div>
@@ -562,6 +585,36 @@
   </div>
 </section>
 
+<section id="roadmap" class="container">
+  <p class="section-kicker">Roadmap</p>
+  <h2>Free today. Fewer speed bumps tomorrow.</h2>
+  <p class="section-sub">Fader is a real, working app right now — everything below is about removing friction, not features.</p>
+
+  <div class="roadmap-list">
+    <div class="roadmap-row roadmap-done">
+      <span class="roadmap-tag">Shipped</span>
+      <div>
+        <h3 class="roadmap-title">Free, open-source volume mixer</h3>
+        <p class="roadmap-desc">Per-app sliders, auto-lower for calls, instant mute — built on real CoreAudio Process Taps, not a hack. Live today, MIT licensed.</p>
+      </div>
+    </div>
+    <div class="roadmap-row roadmap-next">
+      <span class="roadmap-tag">Next</span>
+      <div>
+        <h3 class="roadmap-title">No more Gatekeeper warning</h3>
+        <p class="roadmap-desc">Proper Apple Developer ID signing + notarization, so first launch just opens — no detour through System Settings. Needs an active Apple Developer Program membership (€99 / $99 a year), which is exactly what a coffee here goes toward.</p>
+      </div>
+    </div>
+    <div class="roadmap-row roadmap-goal">
+      <span class="roadmap-tag">Goal</span>
+      <div>
+        <h3 class="roadmap-title">Mac App Store</h3>
+        <p class="roadmap-desc">The same membership unlocks this too — the long-term goal. It'll also take real engineering, not just the fee: the App Store's sandbox and the Process Tap API Fader uses for per-app audio don't currently get along.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="container inner">
     <div class="brand">
@@ -600,14 +653,13 @@
     <div class="modal-phase modal-phase-install">
       <span class="modal-emoji">📦</span>
       <h3>Fader.dmg is downloading</h3>
-      <p class="modal-body">One extra step on first launch — Fader is signed ad-hoc, not with a paid Apple Developer ID, so macOS blocks it once:</p>
+      <p class="modal-body">Quick heads up: Fader isn't on Apple's paid developer program yet, so macOS blocks it the first time you open it. Takes about 10 seconds to clear, and only happens once:</p>
       <ol class="install-steps-list">
-        <li>Open <strong>Fader.dmg</strong> and drag Fader into <strong>Applications</strong>.</li>
-        <li>Double-click Fader — macOS will refuse to open it. That's expected.</li>
-        <li>Open <strong>System Settings → Privacy &amp; Security</strong>, scroll to Security, and click <strong>Open Anyway</strong> next to Fader.</li>
-        <li>Confirm once more (enter your password if asked) — only needed the first time.</li>
+        <li>Open <strong>Fader.dmg</strong> and drag Fader into <strong>Applications</strong>, then open it.</li>
+        <li>macOS says it's blocked — that's expected, not an error.</li>
+        <li>Open <strong>System Settings → Privacy &amp; Security</strong>, scroll to Security, and click <strong>Open Anyway</strong> (confirm your password if it asks).</li>
       </ol>
-      <p class="modal-body install-apple-link">Straight from Apple: <a href="https://support.apple.com/en-gb/guide/mac-help/mh40616/mac" target="_blank" rel="noopener">support.apple.com/guide/mac-help/mh40616</a></p>
+      <p class="modal-body install-apple-link">Fader's fully open source, so you can read every line first — or see <a href="https://support.apple.com/en-gb/guide/mac-help/mh40616/mac" target="_blank" rel="noopener">Apple's own instructions</a> for this step.</p>
       <button class="btn btn-primary modal-got-it" onclick="closeSupportModal()">Got it</button>
     </div>
   </div>
