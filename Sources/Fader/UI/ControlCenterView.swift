@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// Top-level Control Center panel.
 struct ControlCenterView: View {
@@ -85,6 +86,20 @@ private struct MainPanel: View {
 
             if state.duckingEnabled && state.isAnyCommunicationActive {
                 AutoLowerBanner(amount: state.duckingAmount)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            if !state.updateBannerDismissed, let update = state.updateAvailable {
+                UpdateBanner(state: state, update: update)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            if state.showSupportPrompt {
+                SupportPromptBanner(state: state)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -237,6 +252,88 @@ private struct PermissionBanner: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(.orange.opacity(0.30), lineWidth: 0.5)
+                )
+        )
+    }
+}
+
+private struct UpdateBanner: View {
+    @Bindable var state: AudioState
+    let update: (version: String, url: URL)
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "arrow.down.circle.fill")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Brand.accent)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Fader \(update.version) is available.")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 12) {
+                    Button("Get it") { NSWorkspace.shared.open(update.url) }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(Brand.accent)
+                    Button("Not now") { state.updateBannerDismissed = true }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Brand.accent.opacity(0.12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Brand.accent.opacity(0.28), lineWidth: 0.5)
+                )
+        )
+    }
+}
+
+private struct SupportPromptBanner: View {
+    @Bindable var state: AudioState
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(Brand.accent)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Fader's free, but we would love your support.")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 12) {
+                    Button("Support Fader") {
+                        NSWorkspace.shared.open(URL(string: "https://mianjazibali.github.io/fader/#support")!)
+                        state.showSupportPrompt = false
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10.5, weight: .bold))
+                    .foregroundStyle(Brand.accent)
+                    Button("No thanks") { state.showSupportPrompt = false }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Brand.accent.opacity(0.12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Brand.accent.opacity(0.28), lineWidth: 0.5)
                 )
         )
     }

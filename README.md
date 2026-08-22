@@ -38,6 +38,12 @@ Process Taps.
   see macOS's *purple* system-audio recording indicator while it runs
   (expected for any app that adjusts other apps' audio, same as
   SoundSource) — it never triggers the *orange* microphone dot.
+- 🔁 **Remembers your levels** — per-app volume and mute state persist
+  across launches, whether you set them in Fader or in the app itself.
+- 🚀 **Optional launch at login**, off by default, one toggle in Settings.
+- 🔔 **Update checker** — checks GitHub once a day and shows a dismissible
+  banner if there's something newer; never downloads or installs
+  anything on its own.
 
 ---
 

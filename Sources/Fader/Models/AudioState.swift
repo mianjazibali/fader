@@ -25,6 +25,18 @@ final class AudioState {
     /// regardless of this.
     var permissionBannerDismissed: Bool = false
 
+    /// Set by `UpdateChecker` when GitHub's latest release tag is newer
+    /// than the running build. Surfaced as a dismissible banner (re-shown
+    /// next launch if still outdated — this is an ongoing state, not a
+    /// one-time notice) plus the version line in Settings.
+    var updateAvailable: (version: String, url: URL)?
+    var updateBannerDismissed: Bool = false
+
+    /// Set by `EngagementTracker` exactly once, ever, per install — see
+    /// its doc comment for the cumulative-usage threshold and the
+    /// permanent "don't ask again" bookkeeping.
+    var showSupportPrompt: Bool = false
+
     var duckingEnabled: Bool = true
     var duckingAmount: Float = 0.5         // % to lower non-comm apps when ducking
     var duckingAttackMs: Double = 120

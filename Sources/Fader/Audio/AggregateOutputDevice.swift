@@ -53,6 +53,14 @@ final class AggregateOutputDevice {
     /// Per-tap peak levels — same order/indexing as gainBuffer, written by
     /// the realtime callback, exposed via GainSlot.level.
     private let levelBuffer: UnsafeMutableBufferPointer<Float>
+    /// Per-tap gain actually *applied* right now — realtime-thread-owned
+    /// only (never touched from the main thread), ramped toward
+    /// `gainBuffer`'s target at a fixed max rate every sample instead of
+    /// jumping instantly. An instant gain step (mute, or any fast slider
+    /// move) is a discontinuity in the waveform — audible as a click/pop.
+    /// A ~7ms linear ramp is fast enough to feel instant but long enough
+    /// to not click.
+    private let smoothedGainBuffer: UnsafeMutableBufferPointer<Float>
 
     /// Output ring buffer shared with the playback IOProc.
     private let ringBuffer: FloatRingBuffer
@@ -93,6 +101,10 @@ final class AggregateOutputDevice {
         let lvlbuf = UnsafeMutableBufferPointer<Float>.allocate(capacity: max(1, taps.count))
         lvlbuf.initialize(repeating: 0)
         self.levelBuffer = lvlbuf
+
+        let smoothbuf = UnsafeMutableBufferPointer<Float>.allocate(capacity: max(1, taps.count))
+        smoothbuf.initialize(repeating: 1.0)
+        self.smoothedGainBuffer = smoothbuf
 
         self.gainSlots = (0..<taps.count).map { i in
             GainSlot(
@@ -136,6 +148,7 @@ final class AggregateOutputDevice {
         guard status == noErr, aggID != kAudioObjectUnknown else {
             buf.deallocate()
             lvlbuf.deallocate()
+            smoothbuf.deallocate()
             cbuf.deallocate()
             pbuf.deallocate()
             throw AggregateError.creationFailed(status: status)
@@ -151,6 +164,7 @@ final class AggregateOutputDevice {
         AudioHardwareDestroyAggregateDevice(aggregateID)
         gainBuffer.deallocate()
         levelBuffer.deallocate()
+        smoothedGainBuffer.deallocate()
         counterBuffer.deallocate()
         peakBuffer.deallocate()
         didLogPtr?.deallocate()
@@ -159,6 +173,7 @@ final class AggregateOutputDevice {
     func start() throws {
         let gainPtr = gainBuffer.baseAddress!
         let levelPtr = levelBuffer.baseAddress!
+        let smoothedGainPtr = smoothedGainBuffer.baseAddress!
         let counterPtr = counterBuffer.baseAddress!
         let peakPtr = peakBuffer.baseAddress!
         let count = slotCount
@@ -178,6 +193,7 @@ final class AggregateOutputDevice {
                 input: inputData,
                 output: outputData,
                 gains: gainPtr,
+                smoothedGains: smoothedGainPtr,
                 levels: levelPtr,
                 slotCount: count,
                 ring: ring,
@@ -198,6 +214,16 @@ final class AggregateOutputDevice {
         isRunning = true
     }
 
+    /// Copies the current target gains into the smoothed-gain buffer.
+    /// Called once, right before `start()`, so a freshly primed tap
+    /// begins at its correct gain immediately instead of ramping in from
+    /// the smoothed buffer's 1.0 default over the first ~7ms.
+    func primeSmoothedGains() {
+        for i in 0..<slotCount {
+            smoothedGainBuffer[i] = gainBuffer[i]
+        }
+    }
+
     func stop() {
         guard isRunning, let id = ioProcID else { return }
         AudioDeviceStop(aggregateID, id)
@@ -214,10 +240,18 @@ final class AggregateOutputDevice {
     /// headroom for typical IOProc buffer sizes (256-1024 frames).
     private static let scratchSamples = 2048
 
+    /// Max per-sample gain change — bounds any gain step (mute, unmute, a
+    /// fast slider drag) to a ~7ms linear ramp instead of an instant
+    /// jump, which is audible as a click. Assumes 48kHz like the rest of
+    /// this pipeline (see ROADMAP.md's sample-rate-handling item — not
+    /// dynamically queried yet anywhere in Phase 3).
+    private static let maxGainStepPerSample: Float = 1.0 / (0.007 * 48000)
+
     private static func captureCallback(
         input: UnsafePointer<AudioBufferList>,
         output: UnsafeMutablePointer<AudioBufferList>,
         gains: UnsafeMutablePointer<Float>,
+        smoothedGains: UnsafeMutablePointer<Float>,
         levels: UnsafeMutablePointer<Float>,
         slotCount: Int,
         ring: FloatRingBuffer,
@@ -287,13 +321,27 @@ final class AggregateOutputDevice {
                 levels[i] = tapPeak
                 if tapPeak > inputPeak { inputPeak = tapPeak }
 
-                let g = gains.advanced(by: i).pointee
-                if g == 0 { continue }
-
+                // Ramp the applied gain toward the target sample-by-
+                // sample rather than multiplying by a flat value for the
+                // whole buffer — an instant step here (any mute, or a
+                // fast slider move) is a waveform discontinuity, audible
+                // as a click. Deliberately doesn't early-out at target
+                // gain 0 (unlike the old flat-multiply path did): a
+                // fresh mute still needs these samples to ramp down
+                // through, not jump straight to silence.
+                let target = gains.advanced(by: i).pointee
+                var current = smoothedGains.advanced(by: i).pointee
                 let n = min(inSamples, mixSamples)
                 for f in 0..<n {
-                    mixBuf[f] += inFloats[f] * g
+                    let diff = target - current
+                    if abs(diff) <= maxGainStepPerSample {
+                        current = target
+                    } else {
+                        current += diff > 0 ? maxGainStepPerSample : -maxGainStepPerSample
+                    }
+                    mixBuf[f] += inFloats[f] * current
                 }
+                smoothedGains.advanced(by: i).pointee = current
             }
             peaks[0] = inputPeak
 

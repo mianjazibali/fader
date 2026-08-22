@@ -1,7 +1,22 @@
 import SwiftUI
+import ServiceManagement
 
 struct SettingsView: View {
     @Bindable var state: AudioState
+    // Cached rather than re-read from SMAppService.mainApp.status on every
+    // render (a system/XPC lookup, not a free property read) — refreshed
+    // once on appear, then kept in sync locally as the user toggles it.
+    @State private var launchAtLogin = LoginItemManager.isEnabled
+
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: { launchAtLogin },
+            set: { newValue in
+                launchAtLogin = newValue
+                LoginItemManager.setEnabled(newValue)
+            }
+        )
+    }
 
     var body: some View {
         ScrollView {
@@ -35,6 +50,24 @@ struct SettingsView: View {
                     .opacity(state.duckingEnabled ? 1 : 0.5)
                 }
 
+                section(title: "Startup", icon: "power") {
+                    HStack {
+                        Text("Launch at login")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Toggle("", isOn: launchAtLoginBinding)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .labelsHidden()
+                    }
+                    if LoginItemManager.requiresApproval {
+                        Text("Approve in System Settings → General → Login Items to finish enabling this.")
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
                 section(title: "Permissions", icon: "hand.raised") {
                     PermissionRow(
                         label: "System audio capture",
@@ -46,7 +79,20 @@ struct SettingsView: View {
                 }
 
                 section(title: "About", icon: "sparkles") {
-                    InfoLine(label: "Version", value: "0.3.0")
+                    InfoLine(label: "Version", value: currentVersion)
+
+                    if let update = state.updateAvailable {
+                        Link(destination: update.url) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.down.circle.fill")
+                                    .font(.system(size: 10, weight: .semibold))
+                                Text("Update to \(update.version) available")
+                                    .font(.system(size: 11, weight: .semibold))
+                            }
+                            .foregroundStyle(Brand.accent)
+                        }
+                        .padding(.top, 4)
+                    }
 
                     Link(destination: URL(string: "https://github.com/mianjazibali/fader/issues/new/choose")!) {
                         HStack(spacing: 4) {
@@ -71,6 +117,10 @@ struct SettingsView: View {
         // window in --preview) into a runaway layout-invalidation loop
         // trying to resolve it.
         .frame(maxHeight: 400)
+    }
+
+    private var currentVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     }
 
     @ViewBuilder

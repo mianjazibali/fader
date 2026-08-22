@@ -15,6 +15,12 @@ struct FaderApp: App {
         return CoreAudioEngine()
     }()
 
+    // Held here (not just started and dropped) so their internal, weakly-
+    // self-referencing background Tasks stay alive for the app's lifetime
+    // — see the `@State private var engine` pattern above for why.
+    @State private var updateChecker: UpdateChecker?
+    @State private var engagementTracker: EngagementTracker?
+
     init() {
         // Only one Fader process may run at a time. A second one would spin
         // up its own CoreAudioEngine — a second set of Process Taps and its
@@ -36,8 +42,20 @@ struct FaderApp: App {
         // menu bar manager (Ice, Bartender) never trigger the .task hook and
         // detection/gain never come online.
         let e = engine
+        // Constructed here (synchronously, in init's own body) rather than
+        // inside the Task below — assigning to a @State property from
+        // within an escaping closure captured during init isn't allowed
+        // (mutating self), so the instances are made now and only
+        // *started* asynchronously.
+        let checker = UpdateChecker(state: e.state)
+        let engagement = EngagementTracker(state: e.state)
+        updateChecker = checker
+        engagementTracker = engagement
+
         Task { @MainActor in
             try? await e.start()
+            checker.start()
+            engagement.start()
             if CommandLine.arguments.contains("--test-gain-cycle") {
                 await Self.runGainCycleTest(engine: e)
             }

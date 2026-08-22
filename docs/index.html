@@ -967,6 +967,11 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeSupportModal();
   });
+  // Lets the in-app support prompt (or anything else) link straight into
+  // the ask modal instead of just landing on the homepage.
+  if (location.hash === '#support') {
+    startDownload();
+  }
 </script>
 
 <!-- Buy Me a Coffee's official embed: real hosted checkout overlay, no

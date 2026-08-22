@@ -103,6 +103,15 @@ investment.
   real CoreAudio property (`kAudioAggregateDevicePropertyTapList`) but
   under-documented and under-tested enough to be its own follow-up
   rather than something to land blind on the daily-driver build
+- **Mute click suppression** — the realtime callback now ramps each tap's
+  applied gain toward its target over a fixed ~7ms linear ramp instead of
+  applying a flat multiplier for the whole buffer; an instant gain step
+  (mute, unmute, a fast slider drag) is a waveform discontinuity, audible
+  as a click. Freshly (re)primed taps prime the ramp's starting point too,
+  so this doesn't reintroduce a version of the "briefly wrong volume on a
+  fresh tap" bug fixed above. Live-verified with `--test-gain-cycle`: all
+  five stages (25%/100%/mute/100%/50%) settle to the exact correct
+  proportional value, zero underruns
 
 ### Fork fixes (done)
 - **Headphone/Bluetooth hot-swap** — listens for
@@ -126,6 +135,23 @@ investment.
 - **Apps briefly playing at full volume on resume** — see Phase 3 above
 - **Tapped apps quieter than native at 100%** — see Phase 3 above
 - **Duplicate running instance** — see Phase 3 above
+
+### App lifecycle (done)
+- **Launch at login** via `SMAppService.mainApp` (macOS 13+ API,
+  replacing the deprecated `SMLoginItemSetEnabled`) — a Settings toggle,
+  with a hint if macOS still needs the user's approval in System
+  Settings → General → Login Items before it actually takes effect
+- **Update checker** — polls GitHub's releases API once a day, compares
+  the latest tag against the running build, and prompts (a dismissible
+  banner, plus a status line in Settings) rather than installing
+  anything silently. Not Sparkle — see Distribution below for what a
+  real silent-install setup would still need
+- **One-time support prompt** — after 24 cumulative hours of the app
+  actually running (summed across launches, not wall-clock time since
+  install), a dismissible banner asks once, ever, whether to support the
+  project on Buy Me a Coffee. The "already asked" flag is written the
+  instant it becomes eligible, not when the user acts on it, so it can
+  never resurface on a later launch either way
 
 ### Distribution (partially done)
 - `.dmg` installer (`make dmg`) with an Applications-folder symlink for
@@ -159,7 +185,6 @@ investment.
 |---|---|---|
 | Real **RMS level meters** from the IOProc (currently peak, not RMS) | low | low-medium |
 | **Sample-rate handling** — query device nominal sample rate, resample if tap and output disagree | low-med | medium |
-| **Mute click suppression** — fade gain over 5–10 ms instead of instant 0 (avoids audible click on fast transitions) | low | medium |
 | **Row entry/exit animations** — already partially present, could be smoother | low | low |
 | **Settings panel expansion** — auto-lower attack/release sliders, output-device picker | low | medium |
 
@@ -170,7 +195,6 @@ investment.
 | Task | Effort | Value |
 |---|---|---|
 | **Global hotkeys** — system-wide volume cmd+up/down with Accessibility permission | medium | high |
-| **Auto-launch at login** via `SMAppService.mainApp` | low-med | medium |
 | **Multiple output device support** — explicit picker, per-app routing | medium-high | medium |
 | **App allowlist** — let user choose which apps Fader controls (not auto-tap everything) | medium | low-med |
 | **True in-place tap add/remove** — mutate a running aggregate's `kAudioAggregateDevicePropertyTapList` instead of recreating the aggregate on every active-set change. The *playback* side (ring buffer + output IOProc) no longer rebuilds at all — see Phase 3 — this would remove the remaining *capture*-side rebuild too | medium-high | medium |
@@ -183,7 +207,7 @@ investment.
 | Task | Effort | Value |
 |---|---|---|
 | **Developer ID code signing** + Notarization — currently ad-hoc, needs a one-time [System Settings → Privacy & Security → Open Anyway](https://support.apple.com/en-gb/guide/mac-help/mh40616/mac) approval on first launch | medium | required for wide distribution |
-| **Sparkle auto-update** integration | medium | high (post-launch) |
+| **Sparkle auto-update** integration — silent background download + install. What's shipped today (see Phase 3) only checks and prompts; a real Sparkle setup needs its own signing keys and an appcast feed, and only makes sense once Fader is Developer ID signed anyway (an ad-hoc silent install would just trip Gatekeeper the same way a fresh download does) | medium | high (post-launch) |
 | **Privacy policy** — required for Notarization | low | required |
 | **App Store submission** — *would require sandboxing, which breaks Process Taps. Probably not viable.* | n/a | n/a |
 | **Pricing / licensing** — free? Set Apps Inc-style? donation-ware (currently just a Buy Me a Coffee prompt after download)? | n/a | n/a |

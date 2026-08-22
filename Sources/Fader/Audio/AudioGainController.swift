@@ -228,6 +228,10 @@ final class AudioGainController {
         for (bundleID, slot) in zip(bundleOrder, capture.gainSlots) {
             slot.setGain(initialGains[bundleID] ?? 1.0)
         }
+        // Also prime the click-suppression ramp's starting point to match
+        // — otherwise a fresh tap would audibly ramp in from full volume
+        // over the first ~7ms even though it was primed correctly above.
+        capture.primeSmoothedGains()
 
         try capture.start()
         log("capture device started: aggID=\(capture.aggregateID)")
