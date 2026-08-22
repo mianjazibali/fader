@@ -20,7 +20,9 @@ else
 SWIFT := swift
 endif
 
-DMG := build/$(APP_NAME).dmg
+VERSION := $(shell /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" $(INFO_PLIST))
+DMG := build/$(APP_NAME)-$(VERSION).dmg
+DMG_STABLE := build/$(APP_NAME).dmg
 DMG_RW := build/$(APP_NAME)-rw.dmg
 DMG_STAGING := build/dmg-staging
 
@@ -72,7 +74,7 @@ debug:
 	open $(APP_BUNDLE)
 
 dmg: sign
-	@rm -rf $(DMG_STAGING) $(DMG) $(DMG_RW)
+	@rm -rf $(DMG_STAGING) $(DMG) $(DMG_STABLE) $(DMG_RW)
 	@mkdir -p $(DMG_STAGING)
 	cp -R $(APP_BUNDLE) $(DMG_STAGING)/
 	@ln -s /Applications $(DMG_STAGING)/Applications
@@ -86,12 +88,17 @@ dmg: sign
 	hdiutil convert $(DMG_RW) -format UDZO -ov -o $(DMG)
 	@rm -f $(DMG_RW)
 	@rm -rf $(DMG_STAGING)
-	@# The volume-icon dance above only covers the icon shown once the dmg
-	@# is mounted. Finder shows the .dmg FILE itself (e.g. sitting in
-	@# ~/Downloads, unmounted) with a plain generic disk-image icon unless
-	@# we also stamp one directly onto the file via its resource fork —
-	@# same "has custom icon" mechanism, just applied to the outer file
-	@# instead of the volume root.
+	@# Custom icon on the outer .dmg FILE itself (via resource fork +
+	@# Finder's "has custom icon" flag) — same mechanism as the volume
+	@# icon above, just applied to the file instead of the volume root.
+	@# NOTE: this is real and verifiable on this Mac, but it's macOS
+	@# filesystem metadata (an extended attribute), not part of the
+	@# file's actual byte content — it does NOT survive a plain HTTP
+	@# upload/download (confirmed: re-downloading the GitHub-hosted
+	@# asset strips it). It still helps for same-Mac copies, AirDrop,
+	@# etc., so it's harmless to keep, but the *volume* icon set above is
+	@# what a user downloading from the website will actually see, once
+	@# they open the dmg.
 	@rm -f /tmp/fader-dmg-icon.icns /tmp/fader-dmg-icon.rsrc
 	@cp Resources/Icon/AppIcon.icns /tmp/fader-dmg-icon.icns
 	@sips -i /tmp/fader-dmg-icon.icns >/dev/null
@@ -99,7 +106,11 @@ dmg: sign
 	@Rez -append /tmp/fader-dmg-icon.rsrc -o $(DMG)
 	@SetFile -a C $(DMG)
 	@rm -f /tmp/fader-dmg-icon.icns /tmp/fader-dmg-icon.rsrc
-	@echo "Created $(DMG)"
+	@# A second copy under a stable (unversioned) name — this is what the
+	@# website's evergreen releases/latest/download/Fader.dmg link points
+	@# at, so the site never needs updating on a plain version bump.
+	@cp $(DMG) $(DMG_STABLE)
+	@echo "Created $(DMG) and $(DMG_STABLE)"
 
 clean:
 	rm -rf $(BUILD_DIR) build

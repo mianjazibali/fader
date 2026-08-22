@@ -696,10 +696,10 @@
 
     <div class="modal-phase modal-phase-install">
       <span class="modal-emoji">📦</span>
-      <h3>Fader.dmg is downloading</h3>
+      <h3>Fader is downloading</h3>
       <p class="modal-body">Quick heads up: Fader isn't on Apple's paid developer program yet, so macOS blocks it the first time you open it. Takes about 10 seconds to clear, and only happens once:</p>
       <ol class="install-steps-list">
-        <li>Open <strong>Fader.dmg</strong> and drag Fader into <strong>Applications</strong>, then open it.</li>
+        <li>Open the downloaded <strong>.dmg</strong> and drag Fader into <strong>Applications</strong>, then open it.</li>
         <li>macOS says it's blocked (that's expected, not an error).</li>
         <li>Open <strong>System Settings → Privacy &amp; Security</strong>, scroll to Security, and click <strong>Open Anyway</strong> (confirm your password if it asks).</li>
       </ol>
@@ -909,7 +909,11 @@
   renderDemo();
 
   // ---- Download + support modal ----
+  // Evergreen URL (works across releases with zero site changes) — the
+  // actual filename the browser saves it as is set separately below via
+  // `download`, and DOES need bumping alongside each release.
   const DMG_URL = 'https://github.com/mianjazibali/fader/releases/latest/download/Fader.dmg';
+  const APP_VERSION = '2.0.0';
 
   // Both download buttons call this — it opens the ask phase, it does
   // NOT download yet. Downloading only ever happens from inside the
@@ -926,7 +930,7 @@
   function beginDownload() {
     const a = document.createElement('a');
     a.href = DMG_URL;
-    a.download = 'Fader.dmg';
+    a.download = 'Fader-' + APP_VERSION + '.dmg';
     document.body.appendChild(a);
     a.click();
     a.remove();

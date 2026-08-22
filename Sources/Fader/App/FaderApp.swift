@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import Darwin
 
 @main
@@ -34,9 +35,11 @@ struct FaderApp: App {
         // The kernel releases the lock automatically when the file
         // descriptor closes — on clean quit, crash, or `kill -9` alike —
         // so a stale lock can never strand a future launch.
-        guard Self.acquireSingleInstanceLock() else {
-            exit(0)
-        }
+        //
+        // A silent exit(0) here used to be genuinely confusing in
+        // practice — double-click the app, nothing visibly happens, no
+        // menu bar icon, no error. Now the user gets to choose.
+        Self.resolveSingleInstance()
 
         // Engine must start before the menu bar opens — otherwise users with a
         // menu bar manager (Ice, Bartender) never trigger the .task hook and
@@ -74,6 +77,65 @@ struct FaderApp: App {
         // Deliberately never closed: the open fd IS the lock, held until
         // this process exits.
         return true
+    }
+
+    /// If another Fader process already holds the lock, asks the user
+    /// whether to quit it and continue, or cancel this launch, instead of
+    /// silently exiting — a silent exit is indistinguishable from the app
+    /// just being broken.
+    private static func resolveSingleInstance() {
+        if acquireSingleInstanceLock() { return }
+
+        // `NSApp` (the C-style global) is still nil this early in the
+        // SwiftUI App lifecycle — NSApplication hasn't been instantiated
+        // yet at the point `init()` runs. `NSApplication.shared` is the
+        // one that actually creates it on first access; using the global
+        // here silently no-ops (methods on a nil AppKit global don't
+        // trap the way you'd expect) and both the activation and the
+        // alert never actually happen.
+        let app = NSApplication.shared
+        app.setActivationPolicy(.regular)
+        app.activate(ignoringOtherApps: true)
+
+        let alert = NSAlert()
+        alert.messageText = "Fader is already running"
+        alert.informativeText = "Only one copy of Fader can run at a time. You can quit the other one and open this one instead, or cancel."
+        alert.addButton(withTitle: "Quit Other & Open")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .informational
+
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            exit(0)
+        }
+
+        let myPID = ProcessInfo.processInfo.processIdentifier
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: "com.fader.app")
+            .filter { $0.processIdentifier != myPID }
+        others.forEach { $0.terminate() }
+
+        // terminate() is a request, not instant — the other process needs
+        // a moment to actually release the flock on exit. A few short
+        // retries covers that without risking a real hang.
+        for _ in 0..<20 {
+            if acquireSingleInstanceLock() {
+                // Back to a pure menu-bar accessory app — the .regular
+                // bump above was only so the alert could reliably become
+                // frontmost.
+                app.setActivationPolicy(.accessory)
+                return
+            }
+            usleep(150_000)
+        }
+
+        // Still couldn't get it (the other instance didn't quit in time,
+        // or something else entirely holds it) — bail instead of running
+        // two instances against the same audio hardware.
+        let failure = NSAlert()
+        failure.messageText = "Couldn't take over from the other instance"
+        failure.informativeText = "The other copy of Fader didn't quit in time. Try again in a moment."
+        failure.alertStyle = .warning
+        failure.runModal()
+        exit(0)
     }
 
     /// Verification helper: every 3s, set the first detected app's volume to
