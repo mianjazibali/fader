@@ -264,9 +264,12 @@ private struct FooterView: View {
                 .help("Toggle which apps are 'playing audio'")
             }
 
-            // Settings toggle — same plain, no-background style as the
-            // power button next to it, per the user's explicit request.
-            // Both screens are now pinned to the same height (see
+            // Settings toggle (also the "Back" button once on the Settings
+            // screen — same Button, the icon just swaps). Real resting-
+            // state background/border now, same affordance as the mute
+            // icon — a background that only appeared on hover read as
+            // "just an icon" until you happened to find it clickable.
+            // Both screens are pinned to the same height (see
             // ControlCenterView), so this swap is safe to animate: the
             // popover never has to resize mid-transition.
             Button {
@@ -279,7 +282,10 @@ private struct FooterView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 22, height: 22)
                     .background(
-                        Circle().fill(Color.primary.opacity(isHoveringSettings ? 0.09 : 0))
+                        Circle().fill(Color.primary.opacity(isHoveringSettings ? 0.14 : 0.07))
+                    )
+                    .overlay(
+                        Circle().strokeBorder(Color.primary.opacity(isHoveringSettings ? 0.22 : 0.14), lineWidth: 1)
                     )
                     .contentTransition(.symbolEffect(.replace))
             }
@@ -297,7 +303,10 @@ private struct FooterView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 22, height: 22)
                     .background(
-                        Circle().fill(Color.primary.opacity(isHoveringPower ? 0.09 : 0))
+                        Circle().fill(Color.primary.opacity(isHoveringPower ? 0.14 : 0.07))
+                    )
+                    .overlay(
+                        Circle().strokeBorder(Color.primary.opacity(isHoveringPower ? 0.22 : 0.14), lineWidth: 1)
                     )
             }
             .buttonStyle(.plain)
