@@ -256,3 +256,8 @@ of the open distribution work.
 Forked from [altuzar/sonicflow](https://github.com/altuzar/sonicflow).
 Architecture inspired by SoundSource, BackgroundMusic, and similar pro
 audio utilities. CoreAudio Process Tap API by Apple (macOS 14.2+).
+
+## License
+
+[MIT](LICENSE) — same license as the upstream project this was forked
+from.
