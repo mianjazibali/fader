@@ -78,6 +78,16 @@ final class AggregateOutputDevice {
     /// too quiet on quiet passages or clips on loud ones.
     private let agcEnvelopeBuffer: UnsafeMutableBufferPointer<Float>
 
+    /// Per-tap smoothed noise-gate multiplier (0...1), realtime-thread-
+    /// owned, also scoped to `callBoosted[i]` taps only. Independent of
+    /// the AGC envelope above — the AGC's job is "how loud should actual
+    /// speech be," the gate's job is "how much to further quiet things
+    /// down between words," and layering a second multiplier keeps those
+    /// two decisions from fighting each other (the AGC boosting quiet
+    /// audio would otherwise boost background hiss/hum right along with
+    /// genuine quiet speech).
+    private let gateGainBuffer: UnsafeMutableBufferPointer<Float>
+
     /// Output ring buffer shared with the playback IOProc.
     private let ringBuffer: FloatRingBuffer
 
@@ -125,9 +135,26 @@ final class AggregateOutputDevice {
         smoothbuf.initialize(repeating: 1.0)
         self.smoothedGainBuffer = smoothbuf
 
+        // Starts at agcTargetRMS (-> gain 1.0, neutral), not 0. A pause
+        // tears down and recreates the tap entirely (a new
+        // AggregateOutputDevice, a fresh envelope) — starting from 0 reads
+        // as "total silence" and asks for near-maximum gain on the very
+        // first callback, before anything's actually been measured. That's
+        // an audible burst the instant a paused app resumes. Starting
+        // neutral means quiet content still ramps up to full boost over
+        // the next second or so (agcRelease is slow), which is a much
+        // safer failure mode than overshooting loud.
         let envbuf = UnsafeMutableBufferPointer<Float>.allocate(capacity: max(1, taps.count))
-        envbuf.initialize(repeating: 0)
+        envbuf.initialize(repeating: Self.agcTargetRMS)
         self.agcEnvelopeBuffer = envbuf
+
+        // Starts open (1.0) — same cold-start reasoning as the AGC
+        // envelope above: assume speech, not noise, until proven
+        // otherwise, rather than risk clipping the start of a fresh tap's
+        // first word shut.
+        let gatebuf = UnsafeMutableBufferPointer<Float>.allocate(capacity: max(1, taps.count))
+        gatebuf.initialize(repeating: 1.0)
+        self.gateGainBuffer = gatebuf
 
         self.gainSlots = (0..<taps.count).map { i in
             GainSlot(
@@ -173,6 +200,7 @@ final class AggregateOutputDevice {
             lvlbuf.deallocate()
             smoothbuf.deallocate()
             envbuf.deallocate()
+            gatebuf.deallocate()
             cbuf.deallocate()
             pbuf.deallocate()
             throw AggregateError.creationFailed(status: status)
@@ -190,6 +218,7 @@ final class AggregateOutputDevice {
         levelBuffer.deallocate()
         smoothedGainBuffer.deallocate()
         agcEnvelopeBuffer.deallocate()
+        gateGainBuffer.deallocate()
         counterBuffer.deallocate()
         peakBuffer.deallocate()
         didLogPtr?.deallocate()
@@ -200,6 +229,7 @@ final class AggregateOutputDevice {
         let levelPtr = levelBuffer.baseAddress!
         let smoothedGainPtr = smoothedGainBuffer.baseAddress!
         let agcEnvelopePtr = agcEnvelopeBuffer.baseAddress!
+        let gateGainPtr = gateGainBuffer.baseAddress!
         let boosted = callBoosted
         let counterPtr = counterBuffer.baseAddress!
         let peakPtr = peakBuffer.baseAddress!
@@ -223,6 +253,7 @@ final class AggregateOutputDevice {
                 smoothedGains: smoothedGainPtr,
                 levels: levelPtr,
                 agcEnvelopes: agcEnvelopePtr,
+                gateGains: gateGainPtr,
                 callBoosted: boosted,
                 slotCount: count,
                 ring: ring,
@@ -294,10 +325,45 @@ final class AggregateOutputDevice {
     // quieter than another's), so these are a reasoned middle ground
     // between those, not a perfect fit for every moment.
     private static let agcTargetRMS: Float = 0.15
-    private static let agcAttack: Float = 0.15
+    // 0.15 measured as too slow: during a pause the envelope decays and
+    // gain climbs toward its ceiling waiting for the next loud moment, and
+    // by the time speech resumed the gain hadn't backed off yet — an
+    // audible spike right at the start of each new sentence. Measured on a
+    // real call (same unmuted-tap method as above): 0.45 cut the gain
+    // actually applied at that first instant by roughly half in every
+    // onset observed (e.g. 21.5x -> 8.9x, 6.5x -> 2.8x, 9.5x -> 3.3x)
+    // across two separate live captures.
+    private static let agcAttack: Float = 0.45
     private static let agcRelease: Float = 0.02
+    // Once the envelope decays down to this floor during a pause, stop
+    // releasing further instead of continuing to decay toward near-zero.
+    // The single worst spike measured (gain primed to 21.5x after a long
+    // silence, clipping at onset) came from the envelope having nothing
+    // stopping it from decaying all the way down during a long pause —
+    // gating caps how much gain a longer silence can "arm." A call's
+    // audio stream almost certainly stays registered through an ordinary
+    // conversational pause (silence is near-zero signal, not the stream
+    // stopping), so this gate — not the cold-start init — is the
+    // mechanism actually governing "resume after a pause" in practice.
+    // Raised from 0.02 (armed up to 7.5x) after feedback that a burst was
+    // still audible there; 0.05 caps it at 3x.
+    private static let agcGateFloor: Float = 0.05
     private static let agcFloor: Float = 0.001
     private static let agcMaxGain: Float = 28.0
+
+    // Simple noise gate, independent of the AGC above — reduces (not
+    // mutes, to avoid an unnaturally abrupt "dead air" cutoff) background
+    // hiss/hum/room-tone between words, instead of letting the AGC boost
+    // it right along with genuine quiet speech. Threshold sits between
+    // typical background-noise RMS and typical speech RMS from earlier
+    // live measurements (raw call RMS ranged ~0.0015 near-silence to
+    // 0.045+ during active speech). Fast attack (opens quickly so it
+    // doesn't clip a word's onset) / slower release (closes gradually so
+    // it doesn't chop a word's trailing tail).
+    private static let noiseGateThreshold: Float = 0.012
+    private static let noiseGateFloorGain: Float = 0.2
+    private static let noiseGateAttack: Float = 0.6
+    private static let noiseGateRelease: Float = 0.08
 
     private static func captureCallback(
         input: UnsafePointer<AudioBufferList>,
@@ -306,6 +372,7 @@ final class AggregateOutputDevice {
         smoothedGains: UnsafeMutablePointer<Float>,
         levels: UnsafeMutablePointer<Float>,
         agcEnvelopes: UnsafeMutablePointer<Float>,
+        gateGains: UnsafeMutablePointer<Float>,
         callBoosted: [Bool],
         slotCount: Int,
         ring: FloatRingBuffer,
@@ -393,17 +460,35 @@ final class AggregateOutputDevice {
                 // gain, it never makes the tap quieter than what the
                 // slider already asked for.
                 var callGain: Float = 1.0
+                var gateGain: Float = 1.0
                 if callBoosted[i] {
                     let tapRMS = Float(sqrt(tapSumSq / Double(max(1, inSamples))))
+
                     let envPtr = agcEnvelopes.advanced(by: i)
                     var env = envPtr.pointee
                     if tapRMS > env {
                         env += (tapRMS - env) * agcAttack
-                    } else {
+                    } else if env > agcGateFloor {
                         env += (tapRMS - env) * agcRelease
                     }
+                    // else: held at the gate floor — a long pause stops
+                    // arming more gain than that once it's reached.
                     envPtr.pointee = env
                     callGain = min(agcMaxGain, max(1.0, agcTargetRMS / max(env, agcFloor)))
+
+                    // Noise gate: reduce (not mute) whenever this buffer's
+                    // own RMS reads as noise-floor rather than speech,
+                    // smoothed so it doesn't click open/closed.
+                    let gatePtr = gateGains.advanced(by: i)
+                    var gate = gatePtr.pointee
+                    let gateTarget: Float = tapRMS > noiseGateThreshold ? 1.0 : noiseGateFloorGain
+                    if gateTarget > gate {
+                        gate += (gateTarget - gate) * noiseGateAttack
+                    } else {
+                        gate += (gateTarget - gate) * noiseGateRelease
+                    }
+                    gatePtr.pointee = gate
+                    gateGain = gate
                 }
 
                 // Ramp the applied gain toward the target sample-by-
@@ -414,7 +499,7 @@ final class AggregateOutputDevice {
                 // gain 0 (unlike the old flat-multiply path did): a
                 // fresh mute still needs these samples to ramp down
                 // through, not jump straight to silence.
-                let target = gains.advanced(by: i).pointee * callGain
+                let target = gains.advanced(by: i).pointee * callGain * gateGain
                 var current = smoothedGains.advanced(by: i).pointee
                 let n = min(inSamples, mixSamples)
                 for f in 0..<n {
