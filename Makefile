@@ -5,7 +5,14 @@ BUNDLE_ID := com.fader.app
 CONFIG := release
 BUILD_DIR := .build
 APP_BUNDLE := build/$(APP_NAME).app
-EXECUTABLE := $(BUILD_DIR)/$(CONFIG)/$(APP_NAME)
+# Built explicitly for both architectures and lipo'd into one universal
+# binary (see `bundle` below) — a plain `swift build` only produces the
+# host machine's own architecture (arm64 on Apple Silicon), which showed
+# up as "app not supported" for anyone on an Intel Mac. Deployment target
+# matches LSMinimumSystemVersion in Info.plist.
+DEPLOYMENT_TARGET := 14.2
+EXECUTABLE_ARM64 := $(BUILD_DIR)/arm64-apple-macosx/$(CONFIG)/$(APP_NAME)
+EXECUTABLE_X86_64 := $(BUILD_DIR)/x86_64-apple-macosx/$(CONFIG)/$(APP_NAME)
 INFO_PLIST := Sources/Fader/Resources/Info.plist
 ENTITLEMENTS := Sources/Fader/Resources/Fader.entitlements
 
@@ -29,13 +36,14 @@ DMG_STAGING := build/dmg-staging
 .PHONY: build bundle sign run debug dmg clean
 
 build:
-	$(SWIFT) build -c $(CONFIG)
+	$(SWIFT) build -c $(CONFIG) --triple arm64-apple-macosx$(DEPLOYMENT_TARGET)
+	$(SWIFT) build -c $(CONFIG) --triple x86_64-apple-macosx$(DEPLOYMENT_TARGET)
 
 bundle: build icon
 	@rm -rf $(APP_BUNDLE)
 	@mkdir -p $(APP_BUNDLE)/Contents/MacOS
 	@mkdir -p $(APP_BUNDLE)/Contents/Resources
-	cp $(EXECUTABLE) $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
+	lipo -create -output $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME) $(EXECUTABLE_ARM64) $(EXECUTABLE_X86_64)
 	cp $(INFO_PLIST) $(APP_BUNDLE)/Contents/Info.plist
 	cp Resources/Icon/AppIcon.icns $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
 	@touch $(APP_BUNDLE)/Contents/PkgInfo
