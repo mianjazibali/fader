@@ -7,7 +7,12 @@ import SwiftUI
 /// The fill is a plain adaptive white/black, same as the system control —
 /// the brand's orange gradient was tried here and looked overkill.
 struct FluidSlider: View {
-    @Binding var value: Double          // 0...1
+    @Binding var value: Double          // 0...maxValue
+    /// Upper bound of `value`. Default 1.0 (100%) for every normal
+    /// slider; pass 2.0 to expose the gain engine's existing boost
+    /// headroom (`GainSlot.setGain` has always clamped to 0...2) for a
+    /// specific app that opted into it — see AppRowView's boost button.
+    var maxValue: Double = 1.0
     var height: CGFloat = 24
     /// SF Symbols shown to either side of the track. Omit both for sliders
     /// with no natural icon (e.g. the ducking-amount slider).
@@ -33,8 +38,8 @@ struct FluidSlider: View {
 
             GeometryReader { geo in
                 let w = geo.size.width
-                let clampedValue = max(0, min(1, value))
-                let fillWidth = clampedValue * w
+                let clampedValue = max(0, min(maxValue, value))
+                let fillWidth = (clampedValue / maxValue) * w
                 // Live level brightens the WHOLE fill's opacity rather than
                 // overlaying a second, shorter capsule on top of it — a
                 // separate glow shape shorter than the fill has its own
@@ -51,6 +56,16 @@ struct FluidSlider: View {
                     Capsule()
                         .fill(Color.primary.opacity(fillOpacity))
                         .frame(width: fillWidth)
+
+                    // Marks where "100%" sits on an extended (boosted)
+                    // range, so dragging past it reads as a deliberate
+                    // choice, not an accident.
+                    if maxValue > 1.0 {
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.25))
+                            .frame(width: 1.5)
+                            .offset(x: (1.0 / maxValue) * w)
+                    }
                 }
                 .frame(height: height)
                 .scaleEffect(isDragging ? 1.02 : 1.0, anchor: .leading)
@@ -60,7 +75,8 @@ struct FluidSlider: View {
                     DragGesture(minimumDistance: 0)
                         .onChanged { g in
                             isDragging = true
-                            value = Double(max(0, min(1, g.location.x / w)))
+                            let fraction = max(0, min(1, g.location.x / w))
+                            value = Double(fraction) * maxValue
                         }
                         .onEnded { _ in isDragging = false }
                 )

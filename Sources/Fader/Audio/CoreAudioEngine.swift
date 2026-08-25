@@ -95,9 +95,15 @@ final class CoreAudioEngine: AudioEngine {
         persistVolume(for: appId)
     }
 
+    func setBoosted(_ boosted: Bool, for appId: String) {
+        state.setBoosted(boosted, for: appId)
+        pushGain(for: appId)
+        persistVolume(for: appId)
+    }
+
     private func persistVolume(for appId: String) {
         guard let app = state.apps.first(where: { $0.id == appId }) else { return }
-        volumeStore.update(bundleID: appId, volume: app.volume, isMuted: app.isMuted)
+        volumeStore.update(bundleID: appId, volume: app.volume, isMuted: app.isMuted, isBoosted: app.isBoosted)
     }
 
     func resyncAllGains() {
@@ -188,6 +194,7 @@ final class CoreAudioEngine: AudioEngine {
                 icon: existing?.icon ?? running?.icon ?? Self.iconForBundle(bundleID),
                 volume: existing?.volume ?? volumeStore.entry(for: bundleID)?.volume ?? 1.0,
                 isMuted: existing?.isMuted ?? volumeStore.entry(for: bundleID)?.isMuted ?? false,
+                isBoosted: existing?.isBoosted ?? volumeStore.entry(for: bundleID)?.isBoosted ?? false,
                 isActive: active,
                 levelMeter: existing?.levelMeter ?? 0,
                 supportsVolumeControl: supports,

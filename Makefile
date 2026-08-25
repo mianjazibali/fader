@@ -69,8 +69,7 @@ sign: bundle
 	@# refuses to sign over ("resource fork ... not allowed"). Strip
 	@# immediately before signing, in the same recipe, so there's no gap
 	@# for the sync daemon to re-tag in between.
-	xattr -cr $(APP_BUNDLE)
-	codesign --force --deep --sign - \
+	xattr -cr $(APP_BUNDLE) && codesign --force --deep --sign - \
 	  --entitlements $(ENTITLEMENTS) \
 	  --options runtime \
 	  $(APP_BUNDLE)

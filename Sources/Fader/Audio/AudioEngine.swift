@@ -15,6 +15,7 @@ protocol AudioEngine: AnyObject {
 
     func applyGain(_ value: Float, to appId: String)
     func setMuted(_ muted: Bool, for appId: String)
+    func setBoosted(_ boosted: Bool, for appId: String)
 
     /// Re-evaluate the effective gain for every app and push to the realtime
     /// gain table. Called by the UI after master volume / ducking changes.

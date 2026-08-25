@@ -28,6 +28,10 @@ final class MockAudioEngine: AudioEngine {
         state.setMuted(muted, for: appId)
     }
 
+    func setBoosted(_ boosted: Bool, for appId: String) {
+        state.setBoosted(boosted, for: appId)
+    }
+
     // MARK: - Fake data
 
     private func seedFakeApps() {

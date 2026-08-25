@@ -60,6 +60,19 @@ struct AppRowView: View {
                     }
                 }
 
+                if app.supportsVolumeControl {
+                    Button {
+                        engine.setBoosted(!app.isBoosted, for: app.id)
+                        HapticFeedback.tap()
+                    } label: {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(app.isBoosted ? Color.orange : Color.secondary.opacity(0.55))
+                    }
+                    .buttonStyle(.plain)
+                    .help(app.isBoosted ? "Boost on — this app can go up to 200%" : "Boost this app up to 200%")
+                }
+
                 Text(volumeText)
                     .font(.system(size: 11, weight: .semibold).monospacedDigit())
                     .foregroundStyle(app.isMuted ? .red.opacity(0.85) : .secondary)
@@ -75,6 +88,7 @@ struct AppRowView: View {
                     get: { Double(app.volume) },
                     set: { engine.applyGain(Float($0), to: app.id) }
                 ),
+                maxValue: app.isBoosted ? 2.0 : 1.0,
                 height: 22,
                 minIcon: app.isMuted ? "speaker.slash.fill" : "speaker.fill",
                 maxIcon: "speaker.wave.3.fill",

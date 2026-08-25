@@ -22,8 +22,15 @@ struct AudioApp: Identifiable, Equatable {
     var category: AppCategory
     var pid: pid_t?             // current pid, if running
     var icon: NSImage?
-    var volume: Float           // 0.0 ... 1.0, user-set
+    var volume: Float           // 0.0 ... 1.0 normally, 0.0 ... 2.0 when isBoosted
     var isMuted: Bool
+
+    /// User opt-in, per app, off by default. Extends this app's own
+    /// slider range to 200% instead of the normal 100% ceiling — for
+    /// something that's quiet even at full volume. Deliberately per-app
+    /// rather than a blanket range extension for everyone, so every other
+    /// app's "100%" stays exactly what it's always meant.
+    var isBoosted: Bool = false
     var isActive: Bool          // currently producing audio
     var levelMeter: Float       // 0.0 ... 1.0, instantaneous output level
 
@@ -56,6 +63,7 @@ struct AudioApp: Identifiable, Equatable {
         lhs.levelMeter == rhs.levelMeter &&
         lhs.pid == rhs.pid &&
         lhs.supportsVolumeControl == rhs.supportsVolumeControl &&
-        lhs.isInLiveCall == rhs.isInLiveCall
+        lhs.isInLiveCall == rhs.isInLiveCall &&
+        lhs.isBoosted == rhs.isBoosted
     }
 }

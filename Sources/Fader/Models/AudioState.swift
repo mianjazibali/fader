@@ -133,11 +133,23 @@ final class AudioState {
 
     func setVolume(_ value: Float, for id: String) {
         guard let idx = apps.firstIndex(where: { $0.id == id }) else { return }
-        apps[idx].volume = max(0, min(1, value))
+        let ceiling: Float = apps[idx].isBoosted ? 2.0 : 1.0
+        apps[idx].volume = max(0, min(ceiling, value))
     }
 
     func setMuted(_ muted: Bool, for id: String) {
         guard let idx = apps.firstIndex(where: { $0.id == id }) else { return }
         apps[idx].isMuted = muted
+    }
+
+    func setBoosted(_ boosted: Bool, for id: String) {
+        guard let idx = apps.firstIndex(where: { $0.id == id }) else { return }
+        apps[idx].isBoosted = boosted
+        // Turning boost off with the slider left above 100% would leave
+        // the stored volume silently higher than what the now-100%-capped
+        // slider can even display or drag back down to.
+        if !boosted {
+            apps[idx].volume = min(apps[idx].volume, 1.0)
+        }
     }
 }
