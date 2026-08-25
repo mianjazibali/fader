@@ -13,6 +13,17 @@ APP_BUNDLE := build/$(APP_NAME).app
 DEPLOYMENT_TARGET := 14.2
 EXECUTABLE_ARM64 := $(BUILD_DIR)/arm64-apple-macosx/$(CONFIG)/$(APP_NAME)
 EXECUTABLE_X86_64 := $(BUILD_DIR)/x86_64-apple-macosx/$(CONFIG)/$(APP_NAME)
+# Assembled and signed here, not under $(APP_BUNDLE) directly — the whole
+# project lives inside ~/Documents, which iCloud Drive actively syncs and
+# re-tags (com.apple.FinderInfo/fileprovider xattrs) on its own schedule.
+# codesign refuses to sign over those tags ("resource fork ... not
+# allowed"), and that re-tagging can land *during* signing itself, not
+# just in a gap between two commands — chaining xattr-strip + codesign
+# into one shell call still lost the race. /private/tmp is never synced,
+# so nothing can re-tag mid-sign; the finished, already-signed bundle is
+# just copied back into build/ afterward (a plain copy doesn't invalidate
+# an existing signature).
+STAGING_BUNDLE := /private/tmp/fader-build-staging/$(APP_NAME).app
 INFO_PLIST := Sources/Fader/Resources/Info.plist
 ENTITLEMENTS := Sources/Fader/Resources/Fader.entitlements
 
@@ -30,8 +41,16 @@ endif
 VERSION := $(shell /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" $(INFO_PLIST))
 DMG := build/$(APP_NAME)-$(VERSION).dmg
 DMG_STABLE := build/$(APP_NAME).dmg
-DMG_RW := build/$(APP_NAME)-rw.dmg
-DMG_STAGING := build/dmg-staging
+# Built entirely under /private/tmp, same reasoning as $(STAGING_BUNDLE)
+# above — cp -R from the synced build/Fader.app can carry stray xattrs
+# into the staging copy, and hdiutil create bakes whatever's in the
+# staging folder into the dmg's own filesystem content. That means the
+# contamination isn't just a local annoyance here — it ships to every
+# downloader. Only the finished .dmg (a single file) gets copied back
+# into build/ at the end.
+DMG_STAGING := /private/tmp/fader-dmg-staging/$(APP_NAME)
+DMG_RW := /private/tmp/fader-dmg-staging/$(APP_NAME)-rw.dmg
+DMG_TMP := /private/tmp/fader-dmg-staging/$(APP_NAME)-$(VERSION).dmg
 
 .PHONY: build bundle sign run debug dmg clean
 
@@ -40,14 +59,14 @@ build:
 	$(SWIFT) build -c $(CONFIG) --triple x86_64-apple-macosx$(DEPLOYMENT_TARGET)
 
 bundle: build icon
-	@rm -rf $(APP_BUNDLE)
-	@mkdir -p $(APP_BUNDLE)/Contents/MacOS
-	@mkdir -p $(APP_BUNDLE)/Contents/Resources
-	lipo -create -output $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME) $(EXECUTABLE_ARM64) $(EXECUTABLE_X86_64)
-	cp $(INFO_PLIST) $(APP_BUNDLE)/Contents/Info.plist
-	cp Resources/Icon/AppIcon.icns $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
-	@touch $(APP_BUNDLE)/Contents/PkgInfo
-	@echo "APPL????" > $(APP_BUNDLE)/Contents/PkgInfo
+	@rm -rf $(STAGING_BUNDLE)
+	@mkdir -p $(STAGING_BUNDLE)/Contents/MacOS
+	@mkdir -p $(STAGING_BUNDLE)/Contents/Resources
+	lipo -create -output $(STAGING_BUNDLE)/Contents/MacOS/$(APP_NAME) $(EXECUTABLE_ARM64) $(EXECUTABLE_X86_64)
+	cp $(INFO_PLIST) $(STAGING_BUNDLE)/Contents/Info.plist
+	cp Resources/Icon/AppIcon.icns $(STAGING_BUNDLE)/Contents/Resources/AppIcon.icns
+	@touch $(STAGING_BUNDLE)/Contents/PkgInfo
+	@echo "APPL????" > $(STAGING_BUNDLE)/Contents/PkgInfo
 
 icon:
 	@if [ ! -f Resources/Icon/AppIcon.icns ] || [ Resources/Icon/AppIcon.svg -nt Resources/Icon/AppIcon.icns ]; then \
@@ -64,15 +83,13 @@ icon:
 	fi
 
 sign: bundle
-	@# Cloud-sync (iCloud Drive tagging ~/Documents) can re-tag the bundle
-	@# with com.apple.FinderInfo/fileprovider xattrs, which codesign
-	@# refuses to sign over ("resource fork ... not allowed"). Strip
-	@# immediately before signing, in the same recipe, so there's no gap
-	@# for the sync daemon to re-tag in between.
-	xattr -cr $(APP_BUNDLE) && codesign --force --deep --sign - \
+	codesign --force --deep --sign - \
 	  --entitlements $(ENTITLEMENTS) \
 	  --options runtime \
-	  $(APP_BUNDLE)
+	  $(STAGING_BUNDLE)
+	@rm -rf $(APP_BUNDLE)
+	@mkdir -p build
+	cp -R $(STAGING_BUNDLE) $(APP_BUNDLE)
 	@codesign -dvv $(APP_BUNDLE) 2>&1 | head -5
 
 run: sign
@@ -87,9 +104,10 @@ debug:
 	open $(APP_BUNDLE)
 
 dmg: sign
-	@rm -rf $(DMG_STAGING) $(DMG) $(DMG_STABLE) $(DMG_RW)
+	@rm -rf $(DMG_STAGING) $(DMG_RW) $(DMG_TMP)
 	@mkdir -p $(DMG_STAGING)
 	cp -R $(APP_BUNDLE) $(DMG_STAGING)/
+	@xattr -cr $(DMG_STAGING)
 	@ln -s /Applications $(DMG_STAGING)/Applications
 	hdiutil create -volname "$(APP_NAME)" -srcfolder $(DMG_STAGING) -ov -format UDRW -fs HFS+ $(DMG_RW)
 	@MOUNT_DIR=$$(hdiutil attach $(DMG_RW) -nobrowse -readwrite | tail -1 | awk -F '\t' '{print $$NF}'); \
@@ -98,7 +116,7 @@ dmg: sign
 	SetFile -c icnC "$$MOUNT_DIR/.VolumeIcon.icns"; \
 	SetFile -a C "$$MOUNT_DIR"; \
 	hdiutil detach "$$MOUNT_DIR"
-	hdiutil convert $(DMG_RW) -format UDZO -ov -o $(DMG)
+	hdiutil convert $(DMG_RW) -format UDZO -ov -o $(DMG_TMP)
 	@rm -f $(DMG_RW)
 	@rm -rf $(DMG_STAGING)
 	@# Custom icon on the outer .dmg FILE itself (via resource fork +
@@ -116,13 +134,20 @@ dmg: sign
 	@cp Resources/Icon/AppIcon.icns /tmp/fader-dmg-icon.icns
 	@sips -i /tmp/fader-dmg-icon.icns >/dev/null
 	@DeRez -only icns /tmp/fader-dmg-icon.icns > /tmp/fader-dmg-icon.rsrc
-	@Rez -append /tmp/fader-dmg-icon.rsrc -o $(DMG)
-	@SetFile -a C $(DMG)
+	@Rez -append /tmp/fader-dmg-icon.rsrc -o $(DMG_TMP)
+	@SetFile -a C $(DMG_TMP)
 	@rm -f /tmp/fader-dmg-icon.icns /tmp/fader-dmg-icon.rsrc
+	@# Only the finished, single-file .dmg crosses back into the synced
+	@# build/ folder — a data file getting re-tagged afterward doesn't
+	@# corrupt its contents the way re-tagging a bundle mid-codesign does.
+	@mkdir -p build
+	@rm -f $(DMG) $(DMG_STABLE)
+	cp $(DMG_TMP) $(DMG)
 	@# A second copy under a stable (unversioned) name — this is what the
 	@# website's evergreen releases/latest/download/Fader.dmg link points
 	@# at, so the site never needs updating on a plain version bump.
 	@cp $(DMG) $(DMG_STABLE)
+	@rm -f $(DMG_TMP)
 	@echo "Created $(DMG) and $(DMG_STABLE)"
 
 clean:
