@@ -14,6 +14,11 @@ final class UpdateChecker {
     private static let repo = "mianjazibali/fader"
     private static let lastCheckKey = "com.fader.lastUpdateCheck"
     private static let checkInterval: TimeInterval = 24 * 60 * 60
+    /// "Get it" / the Settings update link both send the user here, not
+    /// straight to the GitHub release page — the website's own download
+    /// button/flow is the intended path, GitHub is just where the asset
+    /// happens to be hosted.
+    private static let websiteURL = URL(string: "https://mianjazibali.github.io/fader/")!
 
     private weak var state: AudioState?
     private var task: Task<Void, Never>?
@@ -61,8 +66,7 @@ final class UpdateChecker {
             let (data, response) = try? await URLSession.shared.data(for: request),
             let http = response as? HTTPURLResponse, http.statusCode == 200,
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let tag = json["tag_name"] as? String,
-            let htmlURL = (json["html_url"] as? String).flatMap(URL.init(string:))
+            let tag = json["tag_name"] as? String
         else {
             return
         }
@@ -72,7 +76,7 @@ final class UpdateChecker {
         guard Self.isNewer(latest, than: current) else { return }
 
         let display = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
-        state?.updateAvailable = (version: display, url: htmlURL)
+        state?.updateAvailable = (version: display, url: Self.websiteURL)
     }
 
     /// Parses "v1.2.3" / "1.2.3" into [1, 2, 3]. Missing/non-numeric
