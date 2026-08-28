@@ -354,14 +354,23 @@ final class AggregateOutputDevice {
     // Simple noise gate, independent of the AGC above — reduces (not
     // mutes, to avoid an unnaturally abrupt "dead air" cutoff) background
     // hiss/hum/room-tone between words, instead of letting the AGC boost
-    // it right along with genuine quiet speech. Threshold sits between
-    // typical background-noise RMS and typical speech RMS from earlier
-    // live measurements (raw call RMS ranged ~0.0015 near-silence to
-    // 0.045+ during active speech). Fast attack (opens quickly so it
-    // doesn't clip a word's onset) / slower release (closes gradually so
-    // it doesn't chop a word's trailing tail).
-    private static let noiseGateThreshold: Float = 0.012
-    private static let noiseGateFloorGain: Float = 0.2
+    // it right along with genuine quiet speech.
+    //
+    // 0.012 (the original threshold) turned out too high: RMS here is
+    // measured per ~10ms callback, and real speech's amplitude dips a lot
+    // between syllables even while someone is actively talking — that's
+    // normal acoustic behavior, not a pause. A per-callback measurement
+    // that reads a mid-syllable dip as "silence" fights genuine speech,
+    // not just background noise, which is exactly what made the whole
+    // call sound quieter overall ("sounds less than without it") — this
+    // wasn't the AGC undershooting again, it was the gate actively
+    // pulling boosted speech back down mid-sentence. Lowered well below
+    // the ~0.007-0.045 RMS range live captures showed for active speech,
+    // down near where genuine silence measured (~0.0015-0.003), and the
+    // floor gain raised so a false trigger is far less punishing if it
+    // still happens occasionally.
+    private static let noiseGateThreshold: Float = 0.004
+    private static let noiseGateFloorGain: Float = 0.45
     private static let noiseGateAttack: Float = 0.6
     private static let noiseGateRelease: Float = 0.08
 
