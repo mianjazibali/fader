@@ -68,6 +68,8 @@ struct AppRowView: View {
                         Image(systemName: "bolt.fill")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(app.isBoosted ? Color.orange : Color.secondary.opacity(0.55))
+                            .frame(width: 20, height: 20)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .help(app.isBoosted ? "Boost on — this app can go up to 200%" : "Boost this app up to 200%")

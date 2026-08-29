@@ -23,6 +23,16 @@ struct FaderApp: App {
     @State private var engagementTracker: EngagementTracker?
 
     init() {
+        // SwiftUI's .help() tooltips ride on AppKit's native NSView tooltip
+        // mechanism, which defaults to a ~1-1.5s hover delay system-wide —
+        // fine for occasional use, sluggish for a row of small icons the
+        // user is actively trying to identify. NSInitialToolTipDelay is an
+        // undocumented but long-standing, widely-used AppKit default
+        // (milliseconds) that scopes to this app only, not a system-wide
+        // change. `register` (not `set`) so it's a fallback, not a
+        // persisted override.
+        UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 150])
+
         // Only one Fader process may run at a time. A second one would spin
         // up its own CoreAudioEngine — a second set of Process Taps and its
         // own aggregate device — fighting the first over the exact same
